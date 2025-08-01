@@ -20,6 +20,20 @@ def get_file_type(filename):
         return 'other'
 
 
+def format_bytes(value):
+    if not isinstance(value, (int, float)):
+        return value
+    if value < 1024:
+        return f"{value} B"
+    elif value < 1024 ** 2:
+        return f"{value / 1024:.1f} KB"
+    else:
+        return f"{value / (1024 ** 2):.2f} MB"
+
+
+app.jinja_env.filters['format_bytes'] = format_bytes
+
+
 @app.route('/')
 def index():
     ext = request.args.get('ext', '').lower()
@@ -42,10 +56,15 @@ def index():
             })
     files_sorted = sorted(files, key=lambda x: x['name'].lower())
 
+    total_size = sum(f['size'] for f in files)
+    total_files = len(files)
+
     return render_template('index.html',
                            files=files_sorted,
                            filter_name=name,
-                           filter_ext=ext)
+                           filter_ext=ext,
+                           total_files=len(files_sorted),
+                           total_size=sum(f['size'] for f in files_sorted))
 
 
 @app.route('/api/files')

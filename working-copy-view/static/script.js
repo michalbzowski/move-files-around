@@ -28,9 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 3000);
 }
 
-
-
-
   // Obsługa pokazania toast po reloadzie (localStorage)
   const toastDataRaw = localStorage.getItem('showToast');
   if (toastDataRaw) {

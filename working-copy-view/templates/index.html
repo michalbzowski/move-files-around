@@ -43,6 +43,11 @@
                 </div>
             </form>
 
+            <div class="mb-4">
+              <p><strong>Liczba plików:</strong> {{ total_files }}</p>
+              <p><strong>Łączny rozmiar:</strong> {{ total_size|format_bytes }}</p>
+            </div>
+
             <!-- Akcje dla zaznaczonych -->
             <div class="buttons mb-4" id="fileActions">
                 <button class="button is-danger is-outlined" onclick="moveSelected('bin')">Przenieś do bin</button>
