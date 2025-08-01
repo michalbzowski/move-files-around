@@ -9,3 +9,4 @@ directories/**
 .idea/*.xml
 .venv
 .venv/**
+app.log
