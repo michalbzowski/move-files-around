@@ -1,20 +1,37 @@
-table, th, td { border-collapse: collapse; border: 1px solid #aaa; }
-td, th { padding: 4px 8px; }
-.preview { max-width: 80px; max-height: 60px; }
+/* Stylowanie tabeli - Bulma ma własne style, ale możesz to delikatnie wzmocnić */
+table, th, td {
+  border-collapse: collapse;
+  border: 1px solid #aaa;
+}
+
+td, th {
+  padding: 4px 8px;
+}
+
+.preview {
+  max-width: 80px;
+  max-height: 60px;
+  cursor: pointer;
+}
+
+/* Styl modala - zgodnie z Bulma */
 .modal {
   display: none;
   position: fixed;
   top: 0; left: 0;
-  width: 100vw; height: 100vh;
+  width: 100vw;
+  height: 100vh;
   background: rgba(0,0,0,0.6);
   justify-content: center;
   align-items: center;
   z-index: 1050;
 }
-.modal.show {
+
+.modal.is-active {
   display: flex;
 }
 
+/* Styl obrazka powiększonego w modal */
 #modalImage {
   max-width: 50vw;
   max-height: 50vh;
@@ -24,4 +41,49 @@ td, th { padding: 4px 8px; }
   box-shadow: 0 0 10px #fff;
   border-radius: 5px;
   cursor: pointer;
+}
+
+/* Prosty toast do wyświetlania powiadomień, stylizowany na Bulma */
+.toast {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  padding: 1rem 1.5rem;
+  border-radius: 4px;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease-in-out;
+  z-index: 1100;
+  min-width: 220px;
+}
+
+/* Widoczny toast */
+.toast.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Kolory toastów bazujące na Bulma */
+.toast.primary {
+  background-color: hsl(204, 86%, 53%);
+}
+
+.toast.success {
+  background-color: hsl(141, 71%, 48%);
+}
+
+.toast.danger {
+  background-color: hsl(348, 100%, 61%);
+}
+
+.toast.warning {
+  background-color: hsl(48, 100%, 67%);
+  color: black;
+}
+
+.toast.info {
+  background-color: hsl(204, 86%, 53%);
 }

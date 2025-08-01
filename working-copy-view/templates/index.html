@@ -2,92 +2,146 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WorkingCopy – przeglądarka plików</title>
+
+    <!-- Bulma CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" rel="stylesheet">
+
+    <!-- Twój własny styl -->
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 </head>
-<body class="bg-light">
-<nav class="navbar navbar-expand navbar-dark bg-dark mb-2">
-    <a class="navbar-brand" href="#">WorkingCopy Menedżer</a>
-</nav>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="#">
+                WorkingCopy Menedżer
+            </a>
+        </div>
+    </nav>
 
-<div class="container">
-    <h2>Pliki</h2>
-    <form class="row g-2 mb-2" method="GET" action="{{ url_for('index') }}">
-        <div class="col-auto">
-            <input type="text" id="filterName" name="name" class="form-control" placeholder="Nazwa..." value="{{ filter_name }}">
-        </div>
-        <div class="col-auto">
-            <input type="text" id="filterExt" name="ext" class="form-control" placeholder="Rozszerzenie..." value="{{ filter_ext }}">
-        </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary">Filtruj</button>
-        </div>
-        <div class="col-auto">
-            <button type="button" class="btn btn-secondary" id="darkModeToggle">Ciemny motyw</button>
-        </div>
-    </form>
+    <!-- Główna sekcja -->
+    <section class="section">
+        <div class="container">
 
-    <div id="fileActions" class="mb-2">
-        <button class="btn btn-outline-danger" onclick="moveSelected('bin')">Przenieś do bin</button>
-        <button class="btn btn-success" onclick="moveSelected('AllMedia')">Przenieś do AllMedia</button>
-        <span id="counter"></span>
+            <h2 class="title is-4">Pliki</h2>
+
+            <!-- Formularz filtrowania -->
+            <form class="field is-grouped is-grouped-multiline mb-4" method="GET" action="{{ url_for('index') }}">
+                <div class="control">
+                    <input class="input" type="text" name="name" id="filterName" placeholder="Nazwa..." value="{{ filter_name }}">
+                </div>
+                <div class="control">
+                    <input class="input" type="text" name="ext" id="filterExt" placeholder="Rozszerzenie..." value="{{ filter_ext }}">
+                </div>
+                <div class="control">
+                    <button type="submit" class="button is-primary">Filtruj</button>
+                </div>
+                <div class="control">
+                    <button type="button" class="button is-light" id="darkModeToggle">Ciemny motyw</button>
+                </div>
+            </form>
+
+            <!-- Akcje dla zaznaczonych -->
+            <div class="buttons mb-4" id="fileActions">
+                <button class="button is-danger is-outlined" onclick="moveSelected('bin')">Przenieś do bin</button>
+                <button class="button is-success is-outlined" onclick="moveSelected('AllMedia')">Przenieś do AllMedia</button>
+                <span id="counter"></span>
+            </div>
+
+            <!-- Tabela plików -->
+            <table class="table is-striped is-hoverable is-fullwidth" id="filesTable">
+                <thead>
+                    <tr>
+                        <th><label class="checkbox"><input type="checkbox" id="selectAll"></label></th>
+                        <th>Nazwa</th>
+                        <th>Podgląd</th>
+                        <th>Rozmiar</th>
+                        <th>Data</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody id="filesBody">
+                    {% for f in files %}
+                    <tr>
+                        <td><label class="checkbox"><input type="checkbox" name="file" value="{{ f.name }}"></label></td>
+                        <td>{{ f.name }}</td>
+                        <td>
+                            {% if f.type == 'image' %}
+                                <img src="{{ url_for('serve_file', filename=f.name) }}"
+                                     class="preview"
+                                     onclick="showImageModal(this.src)"
+                                     style="cursor:pointer"
+                                     alt="Podgląd {{ f.name }}">
+                            {% elif f.type == 'video' %}
+                                <video src="{{ url_for('serve_file', filename=f.name) }}"
+                                       class="preview"
+                                       controls>
+                                </video>
+                            {% else %}
+                                <!-- tu możesz dodać ikonę lub zostawić pusto -->
+                            {% endif %}
+                        </td>
+                        <td>{{ (f.size // 1024) }} KB</td>
+                        <td>{{ f.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>
+                            <button class="button is-danger is-small" onclick="moveSelectedSingle('{{ f.name }}', 'bin')">Do bin</button>
+                            <button class="button is-success is-small" onclick="moveSelectedSingle('{{ f.name }}', 'AllMedia')">Do AllMedia</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Modal powiększonego obrazka -->
+    <div id="imageModal" class="modal">
+        <div class="modal-background"></div>
+        <div class="modal-content" style="display:flex; justify-content:center; align-items:center;">
+            <img id="modalImage" alt="Powiększony podgląd" style="max-width:50vw; max-height:50vh; border-radius: 5px; box-shadow: 0 0 10px #fff; cursor:pointer;">
+        </div>
+        <button class="modal-close is-large" aria-label="close"></button>
     </div>
 
-    <table id="filesTable" class="table table-striped table-hover">
-        <thead>
-            <tr>
-                <th><input type="checkbox" id="selectAll"></th>
-                <th>Nazwa</th>
-                <th>Podgląd</th>
-                <th>Rozmiar</th>
-                <th>Data</th>
-                <th>Akcje</th>
-            </tr>
-        </thead>
-        <tbody id="filesBody">
-            {% for f in files %}
-            <tr>
-                <td><input type="checkbox" name="file" value="{{ f.name }}"></td>
-                <td>{{ f.name }}</td>
-                <td>
-                    {% if f.type == 'image' %}
-                        <img src="{{ url_for('serve_file', filename=f.name) }}" class="preview" onclick="showImageModal(this.src)" style="cursor:pointer" />
-                    {% elif f.type == 'video' %}
-                        <video src="{{ url_for('serve_file', filename=f.name) }}" class="preview" controls></video>
-                    {% else %}
-                        <!-- opcjonalnie ikona lub placeholder -->
-                    {% endif %}
-                </td>
-                <td>{{ (f.size // 1024) }} KB</td>
-                <td>{{ f.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                <td>
-                    <button class="btn btn-sm btn-danger" onclick="moveSelectedSingle('{{ f.name }}', 'bin')">Do bin</button>
-                    <button class="btn btn-sm btn-success" onclick="moveSelectedSingle('{{ f.name }}', 'AllMedia')">Do AllMedia</button>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+    <!-- Toast container (prosty, własny styl) -->
+    <div id="toastContainer" style="position: fixed; bottom: 1rem; right: 1rem; z-index: 1080;"></div>
 
-<!-- Modal powiększonego obrazka -->
-<div id="imageModal" class="modal">
-    <img id="modalImage" alt="Powiększony podgląd" />
-</div>
+    <!-- Twój własny skrypt JS -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 
-<!-- Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
-    <div id="liveToast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="d-flex">
-        <div class="toast-body" id="toastBody">Powiadomienie</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    </div>
-</div>
+    <!-- Bulma JS jest "CSS-only" więc nie ma potrzeby dołączać dodatkowego skryptu Bulma -->
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Inicjalizacja modala Bulma
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('imageModal');
+            const modalClose = modal.querySelector('.modal-close');
+            const modalBackground = modal.querySelector('.modal-background');
+            const modalImage = document.getElementById('modalImage');
+
+            function closeModal() {
+                modal.classList.remove('is-active');
+                modalImage.src = "";
+            }
+
+            modalClose.onclick = closeModal;
+            modalBackground.onclick = closeModal;
+            modalImage.onclick = closeModal;
+
+            window.showImageModal = function(src) {
+                modalImage.src = src;
+                modal.classList.add('is-active');
+            };
+
+            // Obsługa checkbox "selectAll"
+            const selectAllCheckbox = document.getElementById('selectAll');
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('input[name="file"]');
+                checkboxes.forEach(ch => ch.checked = this.checked);
+            });
+        });
+    </script>
 </body>
 </html>
-
