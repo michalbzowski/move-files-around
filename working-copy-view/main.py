@@ -16,8 +16,13 @@ def get_file_type(filename):
         return 'image'
     elif ext in ['mp4', 'webm', 'mov', 'avi', 'mkv']:
         return 'video'
+    elif ext == 'pdf':
+        return 'pdf'
+    elif ext in ['txt', 'log', 'csv', 'json', 'md']:
+        return 'text'
     else:
         return 'other'
+
 
 
 def format_bytes(value):
