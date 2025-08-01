@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  file_watcher:
+    build: ./watcher-app
+    container_name: file_watcher
+    volumes:
+      - ./directories/test_dir/input:/input
+      - ./directories/test_dir/processing:/processing
+      - ./directories/test_dir/processed:/processed
+      - ./directories/test_dir/unprocessable:/unprocessable
+      - ./directories/test_dir/tmp:/tmp
+      - ./directories/test_dir/working_copy:/working_copy
+      - ./directories/test_dir/bin:/bin
+      - ./directories/test_dir/all_media:/all_media
+    environment:
+      INPUT_DIR: "/input"
+      PROCESSING_DIR: "/processing"
+      PROCESSED_DIR: "/processed"
+      UNPROCESSABLE_DIR: "/unprocessable"
+      TMP_DIR: "/tmp"
+      WORKING_COPY_DIR: "/working_copy"
+      BIN_DIR: "/bin"
+      ALL_MEDIA_DIR: "/all_media"
+      CONFIG_FILE: "rules.json"
+      INPUT_POLL_INTERVAL: "10"  # w sekundach, zmień wg potrzeby
+    restart: unless-stopped
+  webapp:
+    build: ./working-copy-view
+    container_name: webapp
+    ports:
+      - "5001:5000"        # mapowanie portu na hosta
+    volumes:
+      - ./directories/test_dir/working_copy:/working_copy
+      - ./directories/test_dir/bin:/bin
+      - ./directories/test_dir/all_media:/all_media
+    environment:
+      WORKING_COPY_DIR: "/working_copy"
+      BIN_DIR: "/bin"
+      ALL_MEDIA_DIR: "/all_media"
+    restart: unless-stopped

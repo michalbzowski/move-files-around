@@ -1,0 +1,11 @@
+watcher-app/test_dir
+watcher-app/test_dir/**
+watcher-app/test_data
+watcher-app/test_data/**
+directories/test_dir
+directories/**
+.idea
+.idea/**
+.idea/*.xml
+.venv
+.venv/**

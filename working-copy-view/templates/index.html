@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <title>WorkingCopy – przeglądarka plików</title>
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-expand navbar-dark bg-dark mb-2">
+    <a class="navbar-brand" href="#">WorkingCopy Menedżer</a>
+</nav>
+
+<div class="container">
+    <h2>Pliki</h2>
+    <form class="row g-2 mb-2" method="GET" action="{{ url_for('index') }}">
+        <div class="col-auto">
+            <input type="text" id="filterName" name="name" class="form-control" placeholder="Nazwa..." value="{{ filter_name }}">
+        </div>
+        <div class="col-auto">
+            <input type="text" id="filterExt" name="ext" class="form-control" placeholder="Rozszerzenie..." value="{{ filter_ext }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Filtruj</button>
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-secondary" id="darkModeToggle">Ciemny motyw</button>
+        </div>
+    </form>
+
+    <div id="fileActions" class="mb-2">
+        <button class="btn btn-outline-danger" onclick="moveSelected('bin')">Przenieś do bin</button>
+        <button class="btn btn-success" onclick="moveSelected('AllMedia')">Przenieś do AllMedia</button>
+        <span id="counter"></span>
+    </div>
+
+    <table id="filesTable" class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="selectAll"></th>
+                <th>Nazwa</th>
+                <th>Podgląd</th>
+                <th>Rozmiar</th>
+                <th>Data</th>
+                <th>Akcje</th>
+            </tr>
+        </thead>
+        <tbody id="filesBody">
+            {% for f in files %}
+            <tr>
+                <td><input type="checkbox" name="file" value="{{ f.name }}"></td>
+                <td>{{ f.name }}</td>
+                <td>
+                    {% if f.type == 'image' %}
+                        <img src="{{ url_for('serve_file', filename=f.name) }}" class="preview" onclick="showImageModal(this.src)" style="cursor:pointer" />
+                    {% elif f.type == 'video' %}
+                        <video src="{{ url_for('serve_file', filename=f.name) }}" class="preview" controls></video>
+                    {% else %}
+                        <!-- opcjonalnie ikona lub placeholder -->
+                    {% endif %}
+                </td>
+                <td>{{ (f.size // 1024) }} KB</td>
+                <td>{{ f.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="moveSelectedSingle('{{ f.name }}', 'bin')">Do bin</button>
+                    <button class="btn btn-sm btn-success" onclick="moveSelectedSingle('{{ f.name }}', 'AllMedia')">Do AllMedia</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal powiększonego obrazka -->
+<div id="imageModal" class="modal">
+    <img id="modalImage" alt="Powiększony podgląd" />
+</div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
+    <div id="liveToast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toastBody">Powiadomienie</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
+
