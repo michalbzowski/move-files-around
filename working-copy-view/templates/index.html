@@ -10,6 +10,9 @@
 
     <!-- Twój własny styl -->
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet"/>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="..." crossorigin="anonymous" />
+
 </head>
 <body>
 <!-- Navbar -->
@@ -77,20 +80,32 @@
                 <td>{{ f.name }}</td>
                 <td>
                     {% if f.type == 'image' %}
-                    <img src="{{ url_for('serve_file', filename=f.name) }}"
-                         class="preview"
-                         onclick="showImageModal(this.src)"
-                         style="cursor:pointer"
-                         alt="Podgląd {{ f.name }}">
+                    <img src="{{ url_for('serve_file', filename=f.name) }}" class="preview"
+                         onclick="showImageModal(this.src)" style="cursor:pointer" alt="Podgląd {{ f.name }}">
                     {% elif f.type == 'video' %}
-                    <video src="{{ url_for('serve_file', filename=f.name) }}"
-                           class="preview"
-                           controls>
-                    </video>
+                    <video src="{{ url_for('serve_file', filename=f.name) }}" class="preview" controls></video>
+                     {% elif f.type == 'pdf' %}
+                        <div style="width: 150px; height: 200px; cursor: pointer;" onclick="showPdfModal('{{ url_for('serve_file', filename=f.name) }}')">
+                          <!-- Możesz zamiast object dać ikonę PDF -->
+                          <object data="{{ url_for('serve_file', filename=f.name) }}" type="application/pdf" style="width: 100%; height: 100%; pointer-events: none;">
+                            <p>Twoja przeglądarka nie obsługuje PDF.</p>
+                          </object>
+                        </div>
+                    {% elif f.type == 'text' %}
+                    <!-- Wyświetlamy pierwsze 100 znaków tekstu jako podgląd -->
+                    <pre class="preview"
+                         style="max-width:150px; max-height:150px; overflow: hidden; white-space: pre-wrap; cursor:pointer;"
+                         onclick="showTextModal('{{ url_for('serve_file', filename=f.name) }}')">
+      {{ get_file_preview(f.name) }}
+    </pre>
                     {% else %}
-                    <!-- tu możesz dodać ikonę lub zostawić pusto -->
+                    <!-- Ikona lub pusty podgląd -->
+                    <span class="icon is-large has-text-grey-lighter" title="Brak podglądu">
+      <i class="fas fa-file fa-2x"></i>
+    </span>
                     {% endif %}
                 </td>
+
                 <td>{{ (f.size // 1024) }} KB</td>
                 <td>{{ f.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                 <td>
@@ -117,6 +132,23 @@
     </div>
     <button class="modal-close is-large" aria-label="close"></button>
 </div>
+
+<div id="pdfModal" class="modal">
+  <div class="modal-background"></div>
+  <div class="modal-content" style="width: 80vw; height: 80vh;">
+    <object id="pdfObject" type="application/pdf" width="100%" height="100%"></object>
+  </div>
+  <button class="modal-close is-large" aria-label="close"></button>
+</div>
+
+<div id="textModal" class="modal">
+  <div class="modal-background"></div>
+  <div class="modal-content" style="max-width: 600px; background: white; padding: 1em; border-radius: 5px; overflow-y: auto; max-height: 70vh;">
+    <pre id="textContent" style="white-space: pre-wrap;"></pre>
+  </div>
+  <button class="modal-close is-large" aria-label="close"></button>
+</div>
+
 
 <!-- Toast container (prosty, własny styl) -->
 <div id="toastContainer" style="position: fixed; bottom: 1rem; right: 1rem; z-index: 1080;"></div>

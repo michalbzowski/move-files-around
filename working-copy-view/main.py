@@ -24,6 +24,22 @@ def get_file_type(filename):
         return 'other'
 
 
+def get_file_preview(filename, max_chars=300):
+    import os
+    path = os.path.join(WORKING_COPY_DIR, filename)
+    try:
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read(max_chars)
+            # Zamiana nowych linii na HTML safe
+            content = content.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            return content
+    except Exception:
+        return '[Podgląd niedostępny]'
+
+
+# Rejestracja w Jinja2
+app.jinja_env.globals.update(get_file_preview=get_file_preview)
+
 
 def format_bytes(value):
     if not isinstance(value, (int, float)):

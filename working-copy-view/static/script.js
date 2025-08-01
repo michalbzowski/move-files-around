@@ -106,3 +106,47 @@ function moveSelected(dest) {
     showToast('Błąd podczas przenoszenia plików!', 'danger');
   });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  // PDF modal
+  const pdfModal = document.getElementById('pdfModal');
+  const pdfObject = document.getElementById('pdfObject');
+  const pdfModalClose = pdfModal.querySelector('.modal-close, .modal-background');
+
+  pdfModalClose.addEventListener('click', () => {
+    pdfModal.classList.remove('is-active');
+    pdfObject.data = '';
+  });
+
+  window.showPdfModal = function(src) {
+    pdfObject.data = src;
+    pdfModal.classList.add('is-active');
+  };
+
+  // Text modal
+  const textModal = document.getElementById('textModal');
+  const textContent = document.getElementById('textContent');
+  const textModalClose = textModal.querySelector('.modal-close, .modal-background');
+
+  textModalClose.addEventListener('click', () => {
+    textModal.classList.remove('is-active');
+    textContent.textContent = '';
+  });
+
+  window.showTextModal = function(url) {
+    fetch(url)
+      .then(res => {
+        if(!res.ok) throw new Error('Błąd ładowania pliku');
+        return res.text();
+      })
+      .then(text => {
+        textContent.textContent = text;
+        textModal.classList.add('is-active');
+      })
+      .catch(() => {
+        textContent.textContent = '[Nie można wyświetlić podglądu tekstu]';
+        textModal.classList.add('is-active');
+      });
+  };
+});
+
