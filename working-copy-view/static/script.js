@@ -10,6 +10,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   });
 
+  document.addEventListener('DOMContentLoaded', () => {
+  const filterExtSelect = document.getElementById('filterExt');
+  if (filterExtSelect) {
+    new Choices(filterExtSelect, {
+      removeItemButton: true,
+      maxItemCount: -1,
+      searchEnabled: true,
+      shouldSort: true,
+      placeholder: true,
+      placeholderValue: 'Rozszerzenia'
+    });
+  }
+});
+
   function showToast(message, type = 'primary') {
   const existing = document.querySelector('.toast');
   if (existing) {
@@ -149,4 +163,33 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   };
 });
+
+// Inicjalizacja modala Bulma
+    document.addEventListener('DOMContentLoaded', () => {
+        const modal = document.getElementById('imageModal');
+        const modalClose = modal.querySelector('.modal-close');
+        const modalBackground = modal.querySelector('.modal-background');
+        const modalImage = document.getElementById('modalImage');
+
+        function closeModal() {
+            modal.classList.remove('is-active');
+            modalImage.src = "";
+        }
+
+        modalClose.onclick = closeModal;
+        modalBackground.onclick = closeModal;
+        modalImage.onclick = closeModal;
+
+        window.showImageModal = function(src) {
+            modalImage.src = src;
+            modal.classList.add('is-active');
+        };
+
+        // Obsługa checkbox "selectAll"
+        const selectAllCheckbox = document.getElementById('selectAll');
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('input[name="file"]');
+            checkboxes.forEach(ch => ch.checked = this.checked);
+        });
+    });
 

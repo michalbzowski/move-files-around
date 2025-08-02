@@ -63,16 +63,34 @@ def thumbnail(size, filename):
 
 @app.route('/')
 def index():
-    ext = request.args.get('ext', '').lower()
     name = request.args.get('name', '').lower()
+    filter_ext = [e.lower() for e in request.args.getlist('ext') if e]
+
     files = []
+    extensions_set = set()
+    has_no_ext = False
+
     for f in os.listdir(WORKING_COPY_DIR):
         full = os.path.join(WORKING_COPY_DIR, f)
         if os.path.isfile(full):
-            if ext and not f.lower().endswith(f'.{ext}'):
+            filename_lower = f.lower()
+            if '.' in f:
+                ext = filename_lower.rsplit('.', 1)[-1]
+                extensions_set.add(ext)
+            else:
+                has_no_ext = True
+
+            # Filtracja po nazwie - jeśli wpisałeś
+            if name and name not in filename_lower:
                 continue
-            if name and name not in f.lower():
-                continue
+
+            # Filtracja po rozszerzeniu (multiselect)
+            file_ext = filename_lower.rsplit('.', 1)[-1] if '.' in filename_lower else ''
+            if filter_ext:
+                # Jeśli plik bez rozszerzenia i filter_ext zawiera "no_ext", to pokazujemy
+                if (file_ext == '' and 'no_ext' not in filter_ext) or (file_ext != '' and file_ext not in filter_ext):
+                    continue
+
             stat = os.stat(full)
             files.append({
                 'name': f,
@@ -80,13 +98,17 @@ def index():
                 'date': datetime.fromtimestamp(stat.st_mtime),
                 'type': get_file_type(f)
             })
-    files_sorted = sorted(files, key=lambda x: x['name'].lower())
+
+    extensions_list = sorted(extensions_set)
+    # Przekaż rozszerzenia jako lista i flagę czy są pliki bez rozszerzenia
     return render_template('index.html',
-                           files=files_sorted,
+                           files=files,
                            filter_name=name,
-                           filter_ext=ext,
-                           total_files=len(files_sorted),
-                           total_size=sum(f['size'] for f in files_sorted))
+                           filter_ext=filter_ext,
+                           extensions_list=extensions_list,
+                           has_no_ext=has_no_ext,
+                           total_files=len(files),
+                           total_size=sum(f['size'] for f in files))
 
 
 @app.route('/api/files')

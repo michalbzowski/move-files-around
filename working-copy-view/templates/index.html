@@ -12,7 +12,7 @@
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet"/>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="..." crossorigin="anonymous" />
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 </head>
 <body>
 <!-- Navbar -->
@@ -37,8 +37,14 @@
                        value="{{ filter_name }}">
             </div>
             <div class="control">
-                <input class="input" type="text" name="ext" id="filterExt" placeholder="Rozszerzenie..."
-                       value="{{ filter_ext }}">
+              <select id="filterExt" name="ext" multiple>
+                {% for ext in extensions_list %}
+                <option value="{{ ext }}" {% if ext in filter_ext %}selected{% endif %}>{{ ext }}</option>
+                {% endfor %}
+                {% if has_no_ext %}
+                <option value="no_ext" {% if 'no_ext' in filter_ext %}selected{% endif %}>Pliki bez rozszerzenia</option>
+                {% endif %}
+              </select>
             </div>
             <div class="control">
                 <button type="submit" class="button is-primary">Filtruj</button>
@@ -153,41 +159,9 @@
 
 <!-- Toast container (prosty, własny styl) -->
 <div id="toastContainer" style="position: fixed; bottom: 1rem; right: 1rem; z-index: 1080;"></div>
-
 <!-- Twój własny skrypt JS -->
 <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 <!-- Bulma JS jest "CSS-only" więc nie ma potrzeby dołączać dodatkowego skryptu Bulma -->
-
-<script>
-    // Inicjalizacja modala Bulma
-    document.addEventListener('DOMContentLoaded', () => {
-        const modal = document.getElementById('imageModal');
-        const modalClose = modal.querySelector('.modal-close');
-        const modalBackground = modal.querySelector('.modal-background');
-        const modalImage = document.getElementById('modalImage');
-
-        function closeModal() {
-            modal.classList.remove('is-active');
-            modalImage.src = "";
-        }
-
-        modalClose.onclick = closeModal;
-        modalBackground.onclick = closeModal;
-        modalImage.onclick = closeModal;
-
-        window.showImageModal = function(src) {
-            modalImage.src = src;
-            modal.classList.add('is-active');
-        };
-
-        // Obsługa checkbox "selectAll"
-        const selectAllCheckbox = document.getElementById('selectAll');
-        selectAllCheckbox.addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('input[name="file"]');
-            checkboxes.forEach(ch => ch.checked = this.checked);
-        });
-    });
-</script>
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 </body>
 </html>
