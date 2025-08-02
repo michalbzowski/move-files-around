@@ -4,7 +4,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Instalacja podstawowych pakietów oraz Flask
-RUN pip install --no-cache-dir flask
+RUN pip install --no-cache-dir flask pillow pdf2image poppler-utils
 
 # Kopiujemy cały kod aplikacji (app.py, templates, static itp.)
 COPY . .

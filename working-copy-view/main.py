@@ -1,7 +1,8 @@
-from flask import Flask, render_template, send_from_directory, request, jsonify
 import os
+from flask import Flask, render_template, send_from_directory, request, jsonify, send_file, abort
 import mimetypes
 from datetime import datetime
+from thumb import serve_thumbnail
 import shutil
 
 app = Flask(__name__)
@@ -55,11 +56,15 @@ def format_bytes(value):
 app.jinja_env.filters['format_bytes'] = format_bytes
 
 
+@app.route('/thumb/<size>/<filename>')
+def thumbnail(size, filename):
+    return serve_thumbnail(size, filename)
+
+
 @app.route('/')
 def index():
     ext = request.args.get('ext', '').lower()
     name = request.args.get('name', '').lower()
-
     files = []
     for f in os.listdir(WORKING_COPY_DIR):
         full = os.path.join(WORKING_COPY_DIR, f)
@@ -76,10 +81,6 @@ def index():
                 'type': get_file_type(f)
             })
     files_sorted = sorted(files, key=lambda x: x['name'].lower())
-
-    total_size = sum(f['size'] for f in files)
-    total_files = len(files)
-
     return render_template('index.html',
                            files=files_sorted,
                            filter_name=name,
@@ -114,8 +115,11 @@ def list_files():
 
 @app.route('/files/<filename>')
 def serve_file(filename):
-    # Pozwala na podgląd plików (obrazki/wideo) przez <img>/<video>
-    return send_from_directory(WORKING_COPY_DIR, filename)
+    # Pliki oryginalne – do pobierania lub otwierania
+    file_path = os.path.join(WORKING_COPY_DIR, filename)
+    if os.path.exists(file_path):
+        return send_file(file_path)
+    abort(404)
 
 
 @app.route('/api/move', methods=['POST'])
