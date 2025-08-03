@@ -55,8 +55,10 @@
         </form>
 
         <div class="mb-4">
-            <p><strong>Liczba plików:</strong> {{ total_files }}</p>
+            <p><strong>Liczba wszystkich plików:</strong> {{ total_files }}</p>
             <p><strong>Łączny rozmiar:</strong> {{ total_size|format_bytes }}</p>
+            <p><strong>Łączny plików na stronie:</strong> {{ per_page }}</p>
+            <p><strong>Strona numer:</strong> {{ page }}</p>
         </div>
 
         <!-- Akcje dla zaznaczonych -->
@@ -103,13 +105,13 @@
                     <pre class="preview"
                          style="max-width:150px; max-height:150px; overflow: hidden; white-space: pre-wrap; cursor:pointer;"
                          onclick="showTextModal('{{ url_for('serve_file', filename=f.name) }}')">
-      {{ get_file_preview(f.name) }}
-    </pre>
-                    {% else %}
-                    <!-- Ikona lub pusty podgląd -->
-                    <span class="icon is-large has-text-grey-lighter" title="Brak podglądu">
-      <i class="fas fa-file fa-2x"></i>
-    </span>
+                      {{ get_file_preview(f.name) }}
+                    </pre>
+                                    {% else %}
+                                    <!-- Ikona lub pusty podgląd -->
+                                    <span class="icon is-large has-text-grey-lighter" title="Brak podglądu">
+                      <i class="fas fa-file fa-2x"></i>
+                    </span>
                     {% endif %}
                 </td>
 
@@ -127,6 +129,32 @@
             {% endfor %}
             </tbody>
         </table>
+        <!-- Paginacja -->
+        <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+          {% if page > 1 %}
+            <a class="pagination-previous" href="{{ url_for('index', page=page-1, name=filter_name, ext=filter_ext) }}">Poprzednia</a>
+          {% else %}
+            <a class="pagination-previous" disabled>Poprzednia</a>
+          {% endif %}
+
+          {% if page < total_pages %}
+            <a class="pagination-next" href="{{ url_for('index', page=page+1, name=filter_name, ext=filter_ext) }}">Następna</a>
+          {% else %}
+            <a class="pagination-next" disabled>Następna</a>
+          {% endif %}
+
+          <ul class="pagination-list">
+            {% for p in range(1, total_pages + 1) %}
+              <li>
+                <a class="pagination-link {% if p == page %}is-current{% endif %}"
+                   href="{{ url_for('index', page=p, name=filter_name, ext=filter_ext) }}">
+                  {{ p }}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </nav>
+
     </div>
 </section>
 

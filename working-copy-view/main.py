@@ -1,4 +1,6 @@
 import os
+from math import ceil
+
 from flask import Flask, render_template, send_from_directory, request, jsonify, send_file, abort
 import mimetypes
 from datetime import datetime
@@ -66,7 +68,10 @@ def index():
     name = request.args.get('name', '').lower()
     filter_ext = [e.lower() for e in request.args.getlist('ext') if e]
 
-    files = []
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))
+
+    all_files = []
     extensions_set = set()
     has_no_ext = False
 
@@ -92,12 +97,23 @@ def index():
                     continue
 
             stat = os.stat(full)
-            files.append({
+
+            all_files.append({
                 'name': f,
                 'size': stat.st_size,
                 'date': datetime.fromtimestamp(stat.st_mtime),
                 'type': get_file_type(f)
             })
+
+    total_files = len(all_files)
+    total_pages = ceil(total_files / per_page)
+
+    # Wycinanie „strony” z listy plików
+    start = (page - 1) * per_page
+    end = start + per_page
+    files = all_files[start:end]
+
+    # Przekaż do template: files, page, total_pages, per_page i inne dane
 
     extensions_list = sorted(extensions_set)
     # Przekaż rozszerzenia jako lista i flagę czy są pliki bez rozszerzenia
@@ -107,8 +123,11 @@ def index():
                            filter_ext=filter_ext,
                            extensions_list=extensions_list,
                            has_no_ext=has_no_ext,
-                           total_files=len(files),
-                           total_size=sum(f['size'] for f in files))
+                           total_files=len(all_files),
+                           total_size=sum(f['size'] for f in all_files),
+                           page=page,
+                           total_pages=total_pages,
+                           per_page=per_page)
 
 
 @app.route('/api/files')
