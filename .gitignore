@@ -6,6 +6,10 @@ directories/test_dir
 directories/**
 working-copy-view/thumbnails
 working-copy-view/thumbnails/**
+working-copy-view/test-results
+working-copy-view/test-results/**
+working-copy-view/node_modules
+working-copy-view/package-lock.json
 .idea
 .idea/**
 .idea/*.xml
