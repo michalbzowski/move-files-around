@@ -2,15 +2,30 @@ import os
 from math import ceil
 
 from flask import Flask, render_template, send_from_directory, request, jsonify, send_file, abort
-import mimetypes
 from datetime import datetime
 from thumb import serve_thumbnail
 import shutil
+from face_cluster import cluster_faces_in_directory, load_image_tags, save_image_tags
+from flask_socketio import SocketIO
+from PIL import Image
+import torch
+import clip  # https://github.com/openai/CLIP
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'  # potrzebne do sesji, itp.
+socketio = SocketIO(app, mode="rw", cors_allowed_origins=["http://localhost:5001", "http://127.0.0.1:5001"])
+
 WORKING_COPY_DIR = os.getenv("WORKING_COPY_DIR", "../directories/test_dir/working_copy")
 BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
 ALL_MEDIA_DIR = os.getenv("ALL_MEDIA_DIR", "../directories/test_dir/all_media")
+# Lokalizacja pliku z zapisanymi tagami (np. w katalogu thumbnails lub innym)
+IMAGE_TAGS_PATH = os.path.join('image_tags', 'image_tags.json')
+
+# Przed obsługą endpointu lub na żądanie ładujesz tagi
+image_tags_map = load_image_tags(IMAGE_TAGS_PATH)
+
+# websocket clients
+connected_clients = {}
 
 
 def get_file_type(filename):
@@ -67,6 +82,7 @@ def thumbnail(size, filename):
 def index():
     name = request.args.get('name', '').lower()
     filter_ext = [e.lower() for e in request.args.getlist('ext') if e]
+    image_tags_filter = [p for p in request.args.getlist('image_tags') if p]  # nowy filtr tagów obrazków
 
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 20))
@@ -74,6 +90,12 @@ def index():
     all_files = []
     extensions_set = set()
     has_no_ext = False
+
+    # Pobierz listę unikalnych
+    unique_image_tags = set()
+    for p_list in image_tags_map.values():
+        unique_image_tags.add(p_list['category'])
+    unique_image_tags = sorted(unique_image_tags)
 
     for f in os.listdir(WORKING_COPY_DIR):
         full = os.path.join(WORKING_COPY_DIR, f)
@@ -96,13 +118,25 @@ def index():
                 if (file_ext == '' and 'no_ext' not in filter_ext) or (file_ext != '' and file_ext not in filter_ext):
                     continue
 
+            # Filtr tagów
+
+            if image_tags_filter:
+                image_tags_attributes = image_tags_map.get(full)
+                if image_tags_attributes is None:
+                    continue
+                if image_tags_attributes:
+                    cat = image_tags_attributes['category']
+                    if cat != image_tags_filter[0]:
+                        continue
+
             stat = os.stat(full)
 
             all_files.append({
                 'name': f,
                 'size': stat.st_size,
                 'date': datetime.fromtimestamp(stat.st_mtime),
-                'type': get_file_type(f)
+                'type': get_file_type(f),
+                'image_tags': []
             })
 
     total_files = len(all_files)
@@ -114,9 +148,8 @@ def index():
     files = all_files[start:end]
 
     # Przekaż do template: files, page, total_pages, per_page i inne dane
-
-    extensions_list = sorted(extensions_set)
     # Przekaż rozszerzenia jako lista i flagę czy są pliki bez rozszerzenia
+    extensions_list = sorted(extensions_set)
     return render_template('index.html',
                            files=files,
                            filter_name=name,
@@ -127,7 +160,9 @@ def index():
                            total_size=sum(f['size'] for f in all_files),
                            page=page,
                            total_pages=total_pages,
-                           per_page=per_page)
+                           per_page=per_page,
+                           unique_image_tags=unique_image_tags,
+                           filter_image_tags=image_tags_filter)
 
 
 @app.route('/api/files')
@@ -182,5 +217,109 @@ def move_files():
     return jsonify({'moved': moved})
 
 
+def notify(perc):
+    for sid in connected_clients:
+        socketio.emit('progress', {'percent': perc}, room=sid)
+        print(perc)
+        socketio.sleep(0)  # pozwala event loop obsłużyć inne zdarzenia (przełącznik kontekstu)
+
+
+def refresh_face_tags_background():
+    # Tu wykonaj całą logikę odświeżania tagów twarzy,
+    # np. cluster_faces_in_directory, save_face_tags itp.
+    tags = cluster_faces_in_directory(WORKING_COPY_DIR, notify)
+    save_image_tags(tags, IMAGE_TAGS_PATH)
+    global image_tags_map
+    image_tags_map = tags
+    print("Face tags refreshed.")
+
+
+@socketio.on('connect')
+def handle_connect():
+    sid = request.sid
+    connected_clients[sid] = {}  # Możesz przechowywać dodatkowe metadane, jeśli potrzeba
+    print(f'Client connected: {sid}, total: {len(connected_clients)}')
+    socketio.emit('progress', {'percent': 50})
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    sid = request.sid
+    connected_clients.pop(sid, None)
+    print(f'Client disconnected: {sid}, total: {len(connected_clients)}')
+
+
+# @app.route('/refresh_face_tags')
+# def refresh_face_tags():
+#     # Uruchom proces aktualizacji w osobnym wątku, żeby nie blokować serwera
+#     socketio.start_background_task(sq1w`)
+#     return jsonify({"status": "started"}), 202
+
+
+# klasyfikacja obrazków
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model, preprocess = clip.load("ViT-B/32", device=device)
+
+# Kategorie, które chcemy rozpoznawać
+categories = [
+    "photo of person",
+    "landscape photo",
+    "document photo",
+    "sheet music photo",
+    "other"
+]
+
+# Preprocessujemy teksty do embeddingów
+with torch.no_grad():
+    text_inputs = clip.tokenize(categories).to(device)
+    text_features = model.encode_text(text_inputs)
+    text_features /= text_features.norm(dim=-1, keepdim=True)
+
+
+def classify_image(img_path):
+    image = preprocess(Image.open(img_path)).unsqueeze(0).to(device)
+    with torch.no_grad():
+        image_features = model.encode_image(image)
+        image_features /= image_features.norm(dim=-1, keepdim=True)
+
+        # Obliczamy podobieństwo cosine
+        similarities = (100.0 * image_features @ text_features.T).softmax(dim=-1)
+        probs = similarities.cpu().numpy()[0]
+
+    # Wybieramy kategorię z najwyższym prawdopodobieństwem
+    best_idx = probs.argmax()
+    return categories[best_idx], float(probs[best_idx])
+
+
+def classify_images_background_task():
+    listdir = os.listdir(WORKING_COPY_DIR)
+    total_steps = len(listdir)
+    p = 0
+    result = {}
+    for img_path in listdir:
+        if img_path.lower().endswith(('.jpg', '.jpeg', '.png')):
+            full = os.path.join(WORKING_COPY_DIR, img_path)
+            if not os.path.isfile(full):
+                result[full] = {"error": "File not found"}
+                continue
+            category, score = classify_image(full)
+            result[full] = {"category": category, "confidence": score}
+        p += 1
+        progress = int(p / total_steps * 100)
+        notify(progress)
+    # Zapisz surowe dane (nie jsonify!)
+    save_image_tags(result, IMAGE_TAGS_PATH)
+    print("Image classification finished.")
+
+
+@app.route('/classify_images')
+def classify_images():
+    socketio.start_background_task(classify_images_background_task)
+    return jsonify({"status": "started"}), 202
+
+
+
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5001, debug=True)

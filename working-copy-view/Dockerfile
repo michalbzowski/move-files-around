@@ -4,7 +4,8 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Instalacja podstawowych pakietów oraz Flask
-RUN pip install --no-cache-dir flask pillow pdf2image poppler-utils
+RUN pip install --no-cache-dir flask pillow pdf2image poppler-utils face_recognition numpy scikit-learn git+https://github.com/ageitgey/face_recognition_models flask-socketio==5.3.4  python-socketio==5.8.0 python-engineio==4.4.1 eventlet git+https://github.com/openai/CLIP.git torchvision
+
 
 # Kopiujemy cały kod aplikacji (app.py, templates, static itp.)
 COPY . .

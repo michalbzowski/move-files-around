@@ -52,8 +52,22 @@
             <div class="control">
                 <button type="button" class="button is-light" id="darkModeToggle">Ciemny motyw</button>
             </div>
+            <div class="control">
+                <button id="refreshTagsBtn">Odśwież tagi zdjęć</button>
+                <div id="refreshStatus"></div>
+            </div>
+            <div class="control">
+              <label class="label">Tagi zdjęć</label>
+              <select id="filterImageTag" name="image_tags" multiple>
+                  {% for image_tag in unique_image_tags %}
+                    <option value="{{ image_tag }}" {% if image_tag in filter_image_tags %}selected{% endif %}>
+                      {{ image_tag }}
+                    </option>
+                  {% endfor %}
+                </select>
+            </div>
         </form>
-
+        <progress id="progressBar" max="100" value="0"></progress>
         <div class="mb-4">
             <p><strong>Liczba wszystkich plików:</strong> {{ total_files }}</p>
             <p><strong>Łączny rozmiar:</strong> {{ total_size|format_bytes }}</p>
@@ -191,5 +205,18 @@
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <!-- Bulma JS jest "CSS-only" więc nie ma potrzeby dołączać dodatkowego skryptu Bulma -->
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+<script>
+    const socket = io("http://localhost:5001");
+    socket.on('connect', () => console.log('Połączono z serwerem SocketIO'));
+    socket.on('disconnect', () => console.log('Rozłączono z serwerem'));
+    socket.on('progress', (data) => {
+        console.log('Otrzymany postęp:', data.percent);
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) {
+          progressBar.value = data.percent;
+        }
+    });
+</script>
 </body>
 </html>

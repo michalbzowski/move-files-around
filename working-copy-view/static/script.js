@@ -193,3 +193,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+document.getElementById('refreshTagsBtn').addEventListener('click', (event) => {
+  // (opcjonalnie) pokaż jakiś progress lub status
+  event.preventDefault()
+  const statusDiv = document.getElementById('refreshStatus');
+  statusDiv.innerText = "Uruchamiam odświeżanie tagów...";
+
+  fetch('/classify_images')
+    .then(response => response.json())
+    .then(data => {
+      if(data.status === 'started') {
+        statusDiv.innerText = "Odświeżanie tagów w toku, możesz kontynuować pracę.";
+        // (opcjonalnie) wywołaj mechanizm odświeżenia listy plików po jakimś czasie
+      } else {
+        statusDiv.innerText = "Nieoczekiwana odpowiedź z serwera.";
+      }
+    })
+    .catch(err => {
+      statusDiv.innerText = "Błąd podczas odświeżania: " + err;
+    });
+});
