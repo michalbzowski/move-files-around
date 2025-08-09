@@ -206,6 +206,8 @@
 <!-- Bulma JS jest "CSS-only" więc nie ma potrzeby dołączać dodatkowego skryptu Bulma -->
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+
 <script>
     const socket = io("http://localhost:5001");
     socket.on('connect', () => console.log('Połączono z serwerem SocketIO'));
@@ -217,6 +219,15 @@
           progressBar.value = data.percent;
         }
     });
+
+    // Przykład wykorzystania: po załadowaniu obrazu
+document.querySelectorAll('img.preview, #modalImage').forEach(img => {
+  if (img.complete) {
+    correctImageOrientation(img);
+  } else {
+    img.onload = () => correctImageOrientation(img);
+  }
+});
 </script>
 </body>
 </html>

@@ -213,3 +213,49 @@ document.getElementById('refreshTagsBtn').addEventListener('click', (event) => {
       statusDiv.innerText = "Błąd podczas odświeżania: " + err;
     });
 });
+
+
+
+//obracanie obrazków
+
+function correctImageOrientation(imgElement) {
+  EXIF.getData(imgElement, function() {
+    var orientation = EXIF.getTag(this, "Orientation") || 1;
+    switch (orientation) {
+      case 2:
+        // Flip horizontal
+        imgElement.style.transform = "scaleX(-1)";
+        break;
+      case 3:
+        // Rotate 180°
+        imgElement.style.transform = "rotate(180deg)";
+        break;
+      case 4:
+        // Flip vertical
+        imgElement.style.transform = "scaleY(-1)";
+        break;
+      case 5:
+        // Rotate 90° CW and flip horizontal
+        imgElement.style.transform = "rotate(90deg) scaleX(-1)";
+        break;
+      case 6:
+        // Rotate 90° CW
+        imgElement.style.transform = "rotate(90deg)";
+        break;
+      case 7:
+        // Rotate 90° CCW and flip horizontal
+        imgElement.style.transform = "rotate(-90deg) scaleX(-1)";
+        break;
+      case 8:
+        // Rotate 90° CCW
+        imgElement.style.transform = "rotate(-90deg)";
+        break;
+      default:
+        // Orientation = 1 means no rotation needed
+        imgElement.style.transform = "rotate(90deg)";
+        break;
+    }
+  });
+}
+
+
