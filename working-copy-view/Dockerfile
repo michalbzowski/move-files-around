@@ -14,7 +14,9 @@ RUN pip install --no-input --no-cache-dir numpy
 RUN pip install --no-input --no-cache-dir scikit-learn
 RUN pip install --no-input --no-cache-dir git+https://github.com/ageitgey/face_recognition_models flask-socketio==5.3.4
 RUN pip install --no-input --no-cache-dir python-socketio==5.8.0 python-engineio==4.4.1
-RUN pip install --no-input --no-cache-dir eventlet git+https://github.com/openai/CLIP.git torchvision
+RUN pip install --no-input --no-cache-dir eventlet
+RUN pip install --no-input --no-cache-dir git+https://github.com/openai/CLIP.git
+RUN pip install --no-input --no-cache-dir torchvision
 
 
 # Kopiujemy cały kod aplikacji (app.py, templates, static itp.)
