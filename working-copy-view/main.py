@@ -1,11 +1,11 @@
 import os
 from math import ceil
 
-from flask import Flask, render_template, send_from_directory, request, jsonify, send_file, abort
+from flask import Flask, render_template, request, jsonify, send_file, abort
 from datetime import datetime
 from thumb import serve_thumbnail
 import shutil
-from face_cluster import cluster_faces_in_directory, load_image_tags, save_image_tags
+from face_cluster import load_image_tags, save_image_tags
 from flask_socketio import SocketIO
 from PIL import Image
 import torch
@@ -222,16 +222,6 @@ def notify(perc):
         socketio.emit('progress', {'percent': perc}, room=sid)
         print(perc)
         socketio.sleep(0)  # pozwala event loop obsłużyć inne zdarzenia (przełącznik kontekstu)
-
-
-def refresh_face_tags_background():
-    # Tu wykonaj całą logikę odświeżania tagów twarzy,
-    # np. cluster_faces_in_directory, save_face_tags itp.
-    tags = cluster_faces_in_directory(WORKING_COPY_DIR, notify)
-    save_image_tags(tags, IMAGE_TAGS_PATH)
-    global image_tags_map
-    image_tags_map = tags
-    print("Face tags refreshed.")
 
 
 @socketio.on('connect')
