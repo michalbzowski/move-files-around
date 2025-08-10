@@ -15,9 +15,12 @@ RUN pip install --no-input --no-cache-dir scikit-learn
 RUN pip install --no-input --no-cache-dir git+https://github.com/ageitgey/face_recognition_models flask-socketio==5.3.4
 RUN pip install --no-input --no-cache-dir python-socketio==5.8.0 python-engineio==4.4.1
 RUN pip install --no-input --no-cache-dir eventlet
+RUN pip install --upgrade pip
+# Install torch and torchvision first (CPU-only example)
+RUN pip install --no-cache-dir torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu
+# Clone and install CLIP without dependencies to skip redundant torch install
 RUN git clone https://github.com/openai/CLIP.git /tmp/clip
-RUN pip install --no-cache-dir /tmp/clip
-RUN pip install --no-input --no-cache-dir torchvision
+RUN pip install --timeout=1200 --no-cache-dir /tmp/clip --no-deps
 
 
 
