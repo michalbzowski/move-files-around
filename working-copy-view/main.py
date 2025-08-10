@@ -3,9 +3,8 @@ from math import ceil
 
 from flask import Flask, render_template, request, jsonify, send_file, abort
 from datetime import datetime
-from thumb import serve_thumbnail
+from werkzeug.utils import secure_filename
 import shutil
-from face_cluster import load_image_tags, save_image_tags
 from flask_socketio import SocketIO
 from PIL import Image
 import torch
@@ -18,8 +17,27 @@ socketio = SocketIO(app, mode="rw", cors_allowed_origins=["http://localhost:5001
 WORKING_COPY_DIR = os.getenv("WORKING_COPY_DIR", "../directories/test_dir/working_copy")
 BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
 ALL_MEDIA_DIR = os.getenv("ALL_MEDIA_DIR", "../directories/test_dir/all_media")
+THUMBNAILS_DIR = os.path.join(os.getcwd(), 'thumbnails')
+
 # Lokalizacja pliku z zapisanymi tagami (np. w katalogu thumbnails lub innym)
 IMAGE_TAGS_PATH = os.path.join('image_tags', 'image_tags.json')
+
+
+# Funkcja do zapisu/odczytu do pliku JSON (opcjonalnie)
+def save_image_tags(tags_map, path):
+    with open(path, 'w', encoding='utf-8') as f:
+        import json
+        json.dump(tags_map, f, ensure_ascii=False, indent=2)
+
+
+
+def load_image_tags(path):
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            import json
+            return json.load(f)
+    return {}
+
 
 # Przed obsługą endpointu lub na żądanie ładujesz tagi
 image_tags_map = load_image_tags(IMAGE_TAGS_PATH)
@@ -71,6 +89,64 @@ def format_bytes(value):
 
 
 app.jinja_env.filters['format_bytes'] = format_bytes
+
+import json
+
+
+def get_thumb_path(size, filename):
+    fname = secure_filename(filename)
+    return os.path.join(THUMBNAILS_DIR, f"{size}_{fname}")
+
+
+def generate_image_thumb(orig_path, thumb_path, size):
+    with Image.open(orig_path) as im:
+        im.thumbnail(size)
+        os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+        im.save(thumb_path, "JPEG")
+
+
+def allowed_image(filename):
+    ext = filename.lower().rsplit('.', 1)[-1]
+    return ext in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']
+
+
+def allowed_pdf(filename):
+    ext = filename.lower().rsplit('.', 1)[-1]
+    return ext == 'pdf'
+
+
+def serve_thumbnail(size, filename):
+    width, height = map(int, size.split('x'))
+    orig_path = os.path.join(WORKING_COPY_DIR, filename)
+    thumb_path = get_thumb_path(size, filename)
+
+    # Jeśli już jest wygenerowana miniatura
+    if os.path.exists(thumb_path):
+        return send_file(thumb_path, mimetype="image/jpeg")
+
+    # Dla obrazów
+    if allowed_image(filename) and os.path.exists(orig_path):
+        try:
+            generate_image_thumb(orig_path, thumb_path, (width, height))
+            return send_file(thumb_path, mimetype="image/jpeg")
+        except Exception as e:
+            print(e)
+            abort(500)
+    # Dla PDF – generowanie miniatury PDF (pierwsza strona)
+    if allowed_pdf(filename) and os.path.exists(orig_path):
+        try:
+            # Dopisz: pip install pdf2image poppler-utils
+            from pdf2image import convert_from_path
+            pages = convert_from_path(orig_path, first_page=1, last_page=1, size=(width, height))
+            if pages:
+                os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+                pages[0].save(thumb_path, "JPEG")
+                return send_file(thumb_path, mimetype="image/jpeg")
+        except Exception as e:
+            print(e)
+            abort(500)
+    # Brak obsługiwanego typu
+    abort(404)
 
 
 @app.route('/thumb/<size>/<filename>')
@@ -306,9 +382,6 @@ def classify_images_background_task():
 def classify_images():
     socketio.start_background_task(classify_images_background_task)
     return jsonify({"status": "started"}), 202
-
-
-
 
 
 if __name__ == "__main__":
