@@ -19,6 +19,7 @@ RUN pip install --upgrade pip
 # Install torch and torchvision first (CPU-only example)
 RUN pip install --no-cache-dir torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu
 # Clone and install CLIP without dependencies to skip redundant torch install
+RUN mkdir /tmp/clip
 RUN git clone https://github.com/openai/CLIP.git /tmp/clip
 RUN pip install --timeout=1200 --no-cache-dir /tmp/clip --no-deps
 
