@@ -103,6 +103,7 @@
                 <td>
                     {% if f.type == 'image' %}
                       <img src="{{ url_for('thumbnail', size='150x150', filename=f.name) }}"
+                           loading="lazy"
                            class="preview" style="cursor:pointer"
                            onclick="showImageModal('{{ url_for('thumbnail', size='800x600', filename=f.name) }}')">
                     {% elif f.type == 'video' %}
@@ -209,7 +210,7 @@
 <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
 
 <script>
-    const socket = io("http://localhost:5001");
+    const socket = io("http://192.168.1.68:5001");
     socket.on('connect', () => console.log('Połączono z serwerem SocketIO'));
     socket.on('disconnect', () => console.log('Rozłączono z serwerem'));
     socket.on('progress', (data) => {
