@@ -1,3 +1,19 @@
 {
-  "extensions_to_move": ["jpg", "jpeg", "png", "mp4", "pdf", "txt"]
+  "move": [
+    {
+      "from": "TMP_DIR",
+      "to": "WORKING_COPY_DIR",
+      "extensions": ["jpg", "jpeg", "png", "mp4", "pdf", "txt"]
+    },
+    {
+      "from": "ALL_MEDIA_DIR",
+      "to": "ALL_MEDIA_PHOTOS_DIR",
+      "extensions": ["jpg", "jpeg", "png"]
+    },
+    {
+      "from": "ALL_MEDIA_DIR",
+      "to": "ALL_MEDIA_VIDEOS_DIR",
+      "extensions": ["mp4"]
+    }
+  ]
 }

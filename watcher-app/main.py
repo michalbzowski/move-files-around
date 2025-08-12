@@ -21,6 +21,19 @@ ADDITIONAL_DIRS = os.getenv("ADDITIONAL_DIRS", "../directories/test_dir/addition
 FILE_SLICE_SIZE = os.getenv("FILE_SLICE_SIZE", 1000)
 CONFIG_FILE = os.getenv("CONFIG_FILE", "rules.json")
 
+RULE_DIRS = {
+    "INPUT_DIR": INPUT_DIR,
+    "PROCESSING_DIR": PROCESSING_DIR,
+    "PROCESSED_DIR": PROCESSED_DIR,
+    "UNPROCESSABLE_DIR": UNPROCESSABLE_DIR,
+    "TMP_DIR": TMP_DIR,
+    "WORKING_COPY_DIR": WORKING_COPY_DIR,
+    "BIN_DIR": BIN_DIR,
+    "ALL_MEDIA_DIR": ALL_MEDIA_DIR,
+    "ALL_MEDIA_PHOTOS_DIR": ALL_MEDIA_DIR + "/photos",
+    "ALL_MEDIA_VIDEOS_DIR": ALL_MEDIA_DIR + "/videos"
+}
+
 ARCHIVE_EXTENSIONS = ['zip', 'tar', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2', 'tar.xz', 'txz']
 
 logger = logging.getLogger(__name__)
@@ -184,17 +197,24 @@ def process_additional_dir(input_dir):
 
 def process_tmp_dir(rules):
     # Idziemy po plikach w TMP_DIR i przenosimy do WorkingCopy wg reguł (rozszerzenia)
-    ext_set = set(rules.get("extensions_to_move", []))
-    files_moved = 0
-    for f in os.listdir(TMP_DIR):
-        full_path = os.path.join(TMP_DIR, f)
-        if not os.path.isfile(full_path):
-            continue
-        ext = os.path.splitext(f)[1].lower().lstrip('.')  # usuń kropkę i zmień na małe litery
-        if ext in ext_set:
-            move_file_flat(full_path, WORKING_COPY_DIR)
-            files_moved += 1
-    logger.info(f"Przeniesiono {files_moved} plików z tmp do WorkingCopy wg reguł.")
+    rule_set = rules.get("move")
+    for rule in rule_set:
+        logger.info(f"Rule: {rule}")
+        files_moved = 0
+        from_ = rule["from"]
+        from__ = RULE_DIRS[from_]
+        to_ = rule["to"]
+        to__ = RULE_DIRS[to_]
+        listdir = os.listdir(from__)
+        for f in listdir[:FILE_SLICE_SIZE]:
+            full_path = os.path.join(from__, f)
+            if not os.path.isfile(full_path):
+                continue
+            ext = os.path.splitext(f)[1].lower().lstrip('.')  # usuń kropkę i zmień na małe litery
+            if ext in rule["extensions"]:
+                move_file_flat(full_path, to__)
+                files_moved += 1
+        logger.info(f"Przeniesiono {files_moved} plików z {from__} do {to__} wg reguł.")
 
 
 def main():
@@ -226,14 +246,8 @@ def main():
 
 def ensure_directories():
     logger.info(f"Tworzę katalogi, jeśli nie istnieją")
-    os.makedirs(INPUT_DIR, exist_ok=True)
-    os.makedirs(PROCESSING_DIR, exist_ok=True)
-    os.makedirs(PROCESSED_DIR, exist_ok=True)
-    os.makedirs(UNPROCESSABLE_DIR, exist_ok=True)
-    os.makedirs(TMP_DIR, exist_ok=True)
-    os.makedirs(WORKING_COPY_DIR, exist_ok=True)
-    os.makedirs(BIN_DIR, exist_ok=True)
-    os.makedirs(ALL_MEDIA_DIR, exist_ok=True)
+    for key, value in RULE_DIRS.items():
+        os.makedirs(value, exist_ok=True)
     # additional dirs are not created because they are additional
 
 
