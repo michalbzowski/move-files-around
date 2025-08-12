@@ -21,6 +21,8 @@ WORKING_COPY_DIR = os.getenv("WORKING_COPY_DIR", "../directories/test_dir/workin
 BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
 ALL_MEDIA_DIR = os.getenv("ALL_MEDIA_DIR", "../directories/test_dir/all_media")
 THUMBNAILS_DIR = os.path.join(os.getcwd(), 'thumbnails')
+CLIP_DOWNLOAD_ROOT = os.getenv("CLIP_DOWNLOAD_ROOT", "../directories/clip_download_root")
+os.makedirs(CLIP_DOWNLOAD_ROOT, exist_ok=True)
 logger = logging.getLogger(__name__)
 # Lokalizacja pliku z zapisanymi tagami (np. w katalogu thumbnails lub innym)
 IMAGE_TAGS_PATH = os.path.join('image_tags', 'image_tags.json')
@@ -43,9 +45,6 @@ def load_image_tags(path):
             return json.load(f)
     return {}
 
-
-# Przed obsługą endpointu lub na żądanie ładujesz tagi
-image_tags_map = load_image_tags(IMAGE_TAGS_PATH)
 
 # websocket clients
 connected_clients = {}
@@ -174,6 +173,7 @@ def index():
 
     # Pobierz listę unikalnych
     unique_image_tags = set()
+    image_tags_map = load_image_tags(IMAGE_TAGS_PATH)
     for p_list in image_tags_map.values():
         unique_image_tags.add(p_list['category'])
     unique_image_tags = sorted(unique_image_tags)
@@ -329,7 +329,7 @@ def handle_disconnect():
 
 # klasyfikacja obrazków
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model, preprocess = clip.load("ViT-B/32", device=device)
+model, preprocess = clip.load("ViT-B/32", device=device, download_root=CLIP_DOWNLOAD_ROOT)
 
 # Kategorie, które chcemy rozpoznawać
 categories = [
