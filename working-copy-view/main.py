@@ -1,3 +1,4 @@
+import logging
 import os
 from math import ceil
 
@@ -12,13 +13,14 @@ import clip  # https://github.com/openai/CLIP
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'  # potrzebne do sesji, itp.
-socketio = SocketIO(app, mode="rw", cors_allowed_origins=["http://localhost:5001", "http://127.0.0.1:5001", "http://192.168.1.68:5001" ])
+socketio = SocketIO(app, mode="rw",
+                    cors_allowed_origins=["http://localhost:5001", "http://127.0.0.1:5001", "http://192.168.1.68:5001"])
 
 WORKING_COPY_DIR = os.getenv("WORKING_COPY_DIR", "../directories/test_dir/working_copy")
 BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
 ALL_MEDIA_DIR = os.getenv("ALL_MEDIA_DIR", "../directories/test_dir/all_media")
 THUMBNAILS_DIR = os.path.join(os.getcwd(), 'thumbnails')
-
+logger = logging.getLogger(__name__)
 # Lokalizacja pliku z zapisanymi tagami (np. w katalogu thumbnails lub innym)
 IMAGE_TAGS_PATH = os.path.join('image_tags', 'image_tags.json')
 
@@ -28,7 +30,6 @@ def save_image_tags(tags_map, path):
     with open(path, 'w', encoding='utf-8') as f:
         import json
         json.dump(tags_map, f, ensure_ascii=False, indent=2)
-
 
 
 def load_image_tags(path):
@@ -343,6 +344,7 @@ with torch.no_grad():
 
 
 def classify_image(img_path):
+    logger.info(img_path)
     image = preprocess(Image.open(img_path)).unsqueeze(0).to(device)
     with torch.no_grad():
         image_features = model.encode_image(image)
@@ -358,13 +360,18 @@ def classify_image(img_path):
 
 
 def classify_images_background_task():
+    logger.info(f"Ładuję classify_images_background_task")
+    logger.info(WORKING_COPY_DIR)
     listdir = os.listdir(WORKING_COPY_DIR)
     total_steps = len(listdir)
+    logger.info(total_steps)
     p = 0
     result = {}
     for img_path in listdir:
         if img_path.lower().endswith(('.jpg', '.jpeg', '.png')):
+            logger.info(img_path)
             full = os.path.join(WORKING_COPY_DIR, img_path)
+            logger.info(full)
             if not os.path.isfile(full):
                 result[full] = {"error": "File not found"}
                 continue
