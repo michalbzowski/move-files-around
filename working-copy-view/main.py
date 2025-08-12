@@ -2,6 +2,7 @@ import logging
 import os
 from math import ceil
 
+import PIL
 from flask import Flask, render_template, request, jsonify, send_file, abort
 from datetime import datetime
 from werkzeug.utils import secure_filename
@@ -344,17 +345,23 @@ with torch.no_grad():
 
 
 def classify_image(img_path):
-    logger.info(img_path)
-    image = preprocess(Image.open(img_path)).unsqueeze(0).to(device)
+    logger.info(f"Przetwarzanie obrazu: {img_path}")
+    try:
+        image = preprocess(Image.open(img_path)).unsqueeze(0).to(device)
+    except PIL.UnidentifiedImageError as e:
+        logger.error(f"Nie można zidentyfikować pliku obrazu: {img_path} - {e}")
+        return "unidentified", 0.0
+    except Exception as e:
+        logger.error(f"Błąd przy otwieraniu obrazu {img_path}: {e}")
+        return "error", 0.0
+
     with torch.no_grad():
         image_features = model.encode_image(image)
         image_features /= image_features.norm(dim=-1, keepdim=True)
 
-        # Obliczamy podobieństwo cosine
         similarities = (100.0 * image_features @ text_features.T).softmax(dim=-1)
         probs = similarities.cpu().numpy()[0]
 
-    # Wybieramy kategorię z najwyższym prawdopodobieństwem
     best_idx = probs.argmax()
     return categories[best_idx], float(probs[best_idx])
 
