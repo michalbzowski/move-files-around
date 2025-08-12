@@ -18,6 +18,7 @@ WORKING_COPY_DIR = os.getenv("WORKING_COPY_DIR", "../directories/test_dir/workin
 BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
 ALL_MEDIA_DIR = os.getenv("ALL_MEDIA_DIR", "../directories/test_dir/all_media")
 ADDITIONAL_DIRS = os.getenv("ADDITIONAL_DIRS", "../directories/test_dir/additional_01")
+FILE_SLICE_SIZE = os.getenv("FILE_SLICE_SIZE", 1000)
 CONFIG_FILE = os.getenv("CONFIG_FILE", "rules.json")
 
 ARCHIVE_EXTENSIONS = ['zip', 'tar', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2', 'tar.xz', 'txz']
@@ -154,7 +155,7 @@ def process_input_dir(input_dir):
     processed_archives = []  # do przeniesienia do processed (po rozpakowaniu)
 
     listdir = os.listdir(input_dir)
-    for entry in listdir:
+    for entry in listdir[:FILE_SLICE_SIZE]:
         full_path = os.path.join(input_dir, entry)
         if os.path.isdir(full_path):
             logger.info(f"Przetwarzanie katalogu: {full_path}")
