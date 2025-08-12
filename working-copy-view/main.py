@@ -14,7 +14,7 @@ import clip  # https://github.com/openai/CLIP
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'  # potrzebne do sesji, itp.
 socketio = SocketIO(app, mode="rw",
-                    cors_allowed_origins=["http://localhost:5001", "http://127.0.0.1:5001", "http://192.168.1.68:5001"])
+                    cors_allowed_origins=["http://localhost:5001", "http://127.0.0.1:5001", "http://192.168.1.68:5001", "*"])
 
 WORKING_COPY_DIR = os.getenv("WORKING_COPY_DIR", "../directories/test_dir/working_copy")
 BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
