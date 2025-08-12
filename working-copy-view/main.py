@@ -377,7 +377,7 @@ def classify_images_background_task():
     logger.info(total_steps)
     p = 0
     result = {}
-    for img_path in listdir:
+    for img_path in list(listdir):
         if img_path.lower().endswith(('.jpg', '.jpeg', '.png')):
             logger.info(img_path)
             full = os.path.join(WORKING_COPY_DIR, img_path)

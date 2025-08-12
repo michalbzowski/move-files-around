@@ -13,6 +13,8 @@ services:
       - ./directories/test_dir/working_copy:/working_copy
       - ./directories/test_dir/bin:/bin
       - ./directories/test_dir/all_media:/all_media
+      #- ./directories/test_dir/additional_01:/additional_01
+      #- ./directories/test_dir/additional_02:/additional_02
     environment:
       INPUT_DIR: "/input"
       PROCESSING_DIR: "/processing"
@@ -22,7 +24,7 @@ services:
       WORKING_COPY_DIR: "/working_copy"
       BIN_DIR: "/bin"
       ALL_MEDIA_DIR: "/all_media"
-      ADDITIONAL_DIRS: "" #example "/additional_01" ## comma separated names must match volumes above. Then all files from those dirs will be moved to input
+      ADDITIONAL_DIRS: ""#"/additional_01,/additional_02" #example "/additional_01,/additional_02" ## comma separated names must match volumes above. Then all files from those dirs will be moved to input
       ## above must be followed by matching volume in volume section eg: - ./directories/test_dir/additional:/additional_01
       CONFIG_FILE: "rules.json"
       INPUT_POLL_INTERVAL: "60"  # w sekundach, zmień wg potrzeby

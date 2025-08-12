@@ -177,7 +177,7 @@ def process_input_dir(input_dir):
 
 
 def process_additional_dir(input_dir):
-    logger.info("Additional dir: {}", input_dir)
+    logger.info(f"Additional dir: {input_dir}")
     process_input_dir(input_dir)
 
 
