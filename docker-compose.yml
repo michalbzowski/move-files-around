@@ -22,8 +22,10 @@ services:
       WORKING_COPY_DIR: "/working_copy"
       BIN_DIR: "/bin"
       ALL_MEDIA_DIR: "/all_media"
+      ADDITIONAL_DIRS: "" #example "/additional_01" ## comma separated names must match volumes above. Then all files from those dirs will be moved to input
+      ## above must be followed by matching volume in volume section eg: - ./directories/test_dir/additional:/additional_01
       CONFIG_FILE: "rules.json"
-      INPUT_POLL_INTERVAL: "10"  # w sekundach, zmień wg potrzeby
+      INPUT_POLL_INTERVAL: "60"  # w sekundach, zmień wg potrzeby
     restart: unless-stopped
   webapp:
     build: ./working-copy-view

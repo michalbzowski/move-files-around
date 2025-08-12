@@ -6,6 +6,9 @@ import zipfile
 import tarfile
 import logging
 
+# Default values are needed when run locally.
+# Then I do not need define them
+# in IDE in run properties.
 INPUT_DIR = os.getenv("INPUT_DIR", "../directories/test_dir/input")
 PROCESSING_DIR = os.getenv("PROCESSING_DIR", "../directories/test_dir/processing")
 PROCESSED_DIR = os.getenv("PROCESSED_DIR", "../directories/test_dir/processed")
@@ -14,11 +17,13 @@ TMP_DIR = os.getenv("TMP_DIR", "../directories/test_dir/tmp")
 WORKING_COPY_DIR = os.getenv("WORKING_COPY_DIR", "../directories/test_dir/working_copy")
 BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
 ALL_MEDIA_DIR = os.getenv("ALL_MEDIA_DIR", "../directories/test_dir/all_media")
+ADDITIONAL_DIRS = os.getenv("ADDITIONAL_DIRS", "../directories/test_dir/additional_01")
 CONFIG_FILE = os.getenv("CONFIG_FILE", "rules.json")
 
 ARCHIVE_EXTENSIONS = ['zip', 'tar', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2', 'tar.xz', 'txz']
 
 logger = logging.getLogger(__name__)
+
 
 def load_rules():
     logger.info(f"Ładuję rules.json")
@@ -158,7 +163,7 @@ def process_input_dir(input_dir):
             remove_empty_dirs(full_path)
         elif os.path.isfile(full_path):
             if is_archive(entry):
-                #przenieś archiwum do innego katalogu - procesowanie w następnym kroku
+                # przenieś archiwum do innego katalogu - procesowanie w następnym kroku
                 move_file_flat(full_path, PROCESSING_DIR)
             else:
                 # zwykły plik - kopiuj do TMP_DIR
@@ -169,6 +174,11 @@ def process_input_dir(input_dir):
     # Przenieś rozpakowane archiwa do PROCESSED_DIR
     # for archive_path in processed_archives:
     #     move_file_flat(archive_path, PROCESSED_DIR)
+
+
+def process_additional_dir(input_dir):
+    logger.info("Additional dir: {}", input_dir)
+    process_input_dir(input_dir)
 
 
 def process_tmp_dir(rules):
@@ -187,8 +197,6 @@ def process_tmp_dir(rules):
 
 
 def main():
-
-
     logging.basicConfig(filename='app.log', level=logging.INFO)
     logging.getLogger().addHandler(logging.StreamHandler())
     logger.info('Started')
@@ -200,6 +208,9 @@ def main():
     while True:
         logger.info(f"Rozpoczynam kolejne sprawdzenie")
         try:
+            for additional_dir in ADDITIONAL_DIRS.split(","):
+                process_additional_dir(additional_dir)
+                remove_empty_dirs(additional_dir)
             process_input_dir(INPUT_DIR)
             remove_empty_dirs(INPUT_DIR)
             extract_archives_from_dir_to_flat_destination(PROCESSING_DIR, INPUT_DIR)
@@ -212,14 +223,8 @@ def main():
         time.sleep(poll_interval)
 
 
-
 def ensure_directories():
-
     logger.info(f"Tworzę katalogi, jeśli nie istnieją")
-    logger.info(os.getcwd())
-    logger.info("KOTEK")
-    logger.info(INPUT_DIR)
-    logger.info("PIESEK")
     os.makedirs(INPUT_DIR, exist_ok=True)
     os.makedirs(PROCESSING_DIR, exist_ok=True)
     os.makedirs(PROCESSED_DIR, exist_ok=True)
@@ -228,6 +233,7 @@ def ensure_directories():
     os.makedirs(WORKING_COPY_DIR, exist_ok=True)
     os.makedirs(BIN_DIR, exist_ok=True)
     os.makedirs(ALL_MEDIA_DIR, exist_ok=True)
+    # additional dirs are not created because they are additional
 
 
 if __name__ == "__main__":
