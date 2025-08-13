@@ -35,7 +35,7 @@ RULE_DIRS = {
 }
 
 ARCHIVE_EXTENSIONS = ['zip', 'tar', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2', 'tar.xz', 'txz']
-
+file_size_cache = {}
 logger = logging.getLogger(__name__)
 
 
@@ -84,11 +84,12 @@ def copy_file_flat(src_path, dest_dir):
 
 def move_file_flat(src_path, dest_dir):
     """Przenosi plik do dest_dir zachowując płaską strukturę, unikając nadpisania."""
-    filename = os.path.basename(src_path)
-    dest_path = unique_dest_path(dest_dir, filename)
-    shutil.move(src_path, dest_path)
-    logger.info(f"Przeniesiono {src_path} -> {dest_path}")
-    return dest_path
+    if is_stable(src_path):
+        filename = os.path.basename(src_path)
+        dest_path = unique_dest_path(dest_dir, filename)
+        shutil.move(src_path, dest_path)
+        logger.info(f"Przeniesiono {src_path} -> {dest_path}")
+        file_size_cache.pop(src_path, None)  # remove from cache.
 
 
 def extract_archives_from_dir_to_flat_destination(archive_path, dest_dir):
@@ -98,6 +99,8 @@ def extract_archives_from_dir_to_flat_destination(archive_path, dest_dir):
     listdir = os.listdir(archive_path)
     for entry in listdir:
         full_path = os.path.join(archive_path, entry)
+        if not is_stable(full_path):
+            continue
         try:
             if not os.path.isdir(full_path):
                 logger.info(f"Rozpakowywanie archiwum: {archive_path}")
@@ -158,6 +161,26 @@ def remove_empty_dirs(path):
                 logger.info(f"Nie udało się usunąć katalogu {dirpath}: {e}")
 
 
+def is_stable(full_path):
+    if os.path.isfile(full_path):
+        try:
+            size = os.path.getsize(full_path)
+            previous_size = file_size_cache.get(full_path, None)
+            logger.info(f"File: {full_path}: size: {size}, previous size: {previous_size}")
+            if previous_size is None:
+                file_size_cache[full_path] = size
+                logger.info(f"File: {full_path} will be moved next time")
+                return False
+            return size == previous_size
+        except FileNotFoundError:
+            # Plik nie istnieje
+            logger.info(f"File {full_path} doesn't exists")
+            return False
+    else:
+        logger.info(f"{full_path} is not a file")
+        return False
+
+
 def process_input_dir(input_dir):
     # 1. Znajdź nowe pliki i katalogi w INPUT_DIR
     # 2. Dla katalogów przenosimy ich zawartość plik po pliku do TMP_DIR do płaskiej strukturze
@@ -183,11 +206,7 @@ def process_input_dir(input_dir):
                 # zwykły plik - kopiuj do TMP_DIR
                 move_file_flat(full_path, TMP_DIR)
         else:
-            logger.info(f"Pominięto: {full_path} (nie jest plikiem ani katalogiem)")
-
-    # Przenieś rozpakowane archiwa do PROCESSED_DIR
-    # for archive_path in processed_archives:
-    #     move_file_flat(archive_path, PROCESSED_DIR)
+            logger.info(f"Pominięto: {full_path} (nie jest plikiem ani katalogiem lub jest w trakcie kopiowania)")
 
 
 def process_additional_dir(input_dir):
@@ -213,7 +232,7 @@ def process_tmp_dir(rules):
             ext = os.path.splitext(f)[1].lower().lstrip('.')  # usuń kropkę i zmień na małe litery
             if ext in rule["extensions"]:
                 move_file_flat(full_path, to__)
-                files_moved += 1
+                files_moved += 1 ##Bug - move file flat nie przenosi za pierwszym razem bo czeka na cache wielkosci pliku
         logger.info(f"Przeniesiono {files_moved} plików z {from__} do {to__} wg reguł.")
 
 

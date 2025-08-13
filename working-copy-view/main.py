@@ -299,7 +299,7 @@ def move_files():
 
 
 def notify(perc):
-    for sid in connected_clients:
+    for sid in list(connected_clients.keys()):
         socketio.emit('progress', {'percent': perc}, room=sid)
         print(perc)
         socketio.sleep(0)  # pozwala event loop obsłużyć inne zdarzenia (przełącznik kontekstu)
