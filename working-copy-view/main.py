@@ -11,6 +11,7 @@ from flask_socketio import SocketIO
 from PIL import Image
 import torch
 import clip  # https://github.com/openai/CLIP
+from flask import send_from_directory
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'  # potrzebne do sesji, itp.
@@ -399,6 +400,18 @@ def classify_images_background_task():
 def classify_images():
     socketio.start_background_task(classify_images_background_task)
     return jsonify({"status": "started"}), 202
+
+
+@app.route('/download/<path:filename>')
+def download_file(filename):
+    safe_name = secure_filename(filename)  # zabezpieczenie nazwy pliku
+    dir_path = WORKING_COPY_DIR
+    file_path = os.path.join(dir_path, safe_name)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        # send_from_directory z trybem as_attachment=True powoduje pobranie pliku
+        return send_from_directory(directory=dir_path, path=safe_name, as_attachment=True)
+    else:
+        abort(404)
 
 
 if __name__ == "__main__":

@@ -139,6 +139,7 @@
                     <button class="button is-success is-small" onclick="moveSelectedSingle('{{ f.name }}', 'AllMedia')">
                         Do AllMedia
                     </button>
+                     <a class="button is-link is-small" href="{{ url_for('download_file', filename=f.name) }}" download>Pobierz</a>
                 </td>
             </tr>
             {% endfor %}
