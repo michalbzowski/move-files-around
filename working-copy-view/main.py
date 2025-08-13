@@ -21,6 +21,7 @@ socketio = SocketIO(app, mode="rw",
 WORKING_COPY_DIR = os.getenv("WORKING_COPY_DIR", "../directories/test_dir/working_copy")
 BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
 ALL_MEDIA_DIR = os.getenv("ALL_MEDIA_DIR", "../directories/test_dir/all_media")
+UNPROCESSABLE_DIR = os.getenv("UNPROCESSABLE_DIR", "../directories/test_dir/unprocessable")
 THUMBNAILS_DIR = os.path.join(os.getcwd(), 'thumbnails')
 CLIP_DOWNLOAD_ROOT = os.getenv("CLIP_DOWNLOAD_ROOT", "../directories/clip_download_root")
 os.makedirs(CLIP_DOWNLOAD_ROOT, exist_ok=True)
@@ -370,6 +371,17 @@ def classify_image(img_path):
     return categories[best_idx], float(probs[best_idx])
 
 
+def image_is_broken(img_path):
+    logger.info(f"Sprawdanie obrazu: {img_path}")
+    try:
+        Image.open(img_path)
+    except PIL.UnidentifiedImageError as e:
+        return True
+    except Exception as e:
+        return True
+    return False
+
+
 def classify_images_background_task():
     logger.info(f"Ładuję classify_images_background_task")
     logger.info(WORKING_COPY_DIR)
@@ -385,6 +397,9 @@ def classify_images_background_task():
             logger.info(full)
             if not os.path.isfile(full):
                 result[full] = {"error": "File not found"}
+                continue
+            if image_is_broken(full):
+                shutil.move(full, UNPROCESSABLE_DIR)
                 continue
             category, score = classify_image(full)
             result[full] = {"category": category, "confidence": score}

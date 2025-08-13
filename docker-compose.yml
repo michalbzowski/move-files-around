@@ -38,10 +38,12 @@ services:
       - ./directories/test_dir/working_copy:/working_copy
       - ./directories/test_dir/bin:/bin
       - ./directories/test_dir/all_media:/all_media
+      - ./directories/test_dir/unprocessable:/unprocessable
       - ./directories/clip_download_root:/clip_download_root
     environment:
       WORKING_COPY_DIR: "/working_copy"
       BIN_DIR: "/bin"
       ALL_MEDIA_DIR: "/all_media"
+      UNPROCESSABLE_DIR: "/unprocessable"
       CLIP_DOWNLOAD_ROOT: "/clip_download_root"
     restart: unless-stopped
