@@ -335,11 +335,12 @@ model, preprocess = clip.load("ViT-B/32", device=device, download_root=CLIP_DOWN
 
 # Kategorie, które chcemy rozpoznawać
 categories = [
-    "photo of person",
-    "landscape photo",
-    "document photo",
-    "sheet music photo",
-    "other"
+    "photo of landscape",
+    "photo of buildings",
+    "photo of sheet music",
+    "photo of children",
+    "photo of older than children persons",
+    "photo of text on paper",
 ]
 
 # Preprocessujemy teksty do embeddingów
