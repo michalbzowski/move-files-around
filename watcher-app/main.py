@@ -167,8 +167,8 @@ def is_stable(full_path):
             size = os.path.getsize(full_path)
             previous_size = file_size_cache.get(full_path, None)
             logger.info(f"File: {full_path}: size: {size}, previous size: {previous_size}")
-            if previous_size is None:
-                file_size_cache[full_path] = size
+            file_size_cache[full_path] = size
+            if previous_size is None or size != previous_size:
                 logger.info(f"File: {full_path} will be moved next time")
                 return False
             return size == previous_size
