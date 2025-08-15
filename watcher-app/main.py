@@ -236,7 +236,7 @@ def process_rules(rules):
         extensions__ = rule["extensions"]
         logger.info(f"- from: {from__}")
         logger.info(f"- to:   {to__}")
-        logger.info(f"- ext:  {extensions__}")
+        logger.info(f"- exts: {extensions__}")
         listdir = os.listdir(from__)
         logger.info(f"- all:  {len(listdir)}")
         for f in listdir[:FILE_SLICE_SIZE]:

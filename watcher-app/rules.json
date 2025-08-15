@@ -39,6 +39,7 @@
       "from": "TMP_DIR",
       "to": "BIN_DIR",
       "extensions": [
+        "",
 "webm"
 ,"webp"
 ,"wlmp"
@@ -151,7 +152,7 @@
     {
       "from": "ALL_MEDIA_DIR",
       "to": "ALL_MEDIA_VIDEOS_DIR",
-      "extensions": ["mp4"]
+      "extensions": ["mp4", "mov", "avi", "wma"]
     }
   ]
 }
