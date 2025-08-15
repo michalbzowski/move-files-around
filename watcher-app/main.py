@@ -174,14 +174,14 @@ def remove_empty_dirs(path):
 def is_stable(full_path):
     if os.path.isfile(full_path):
         try:
-            size = os.path.getsize(full_path)
             previous_size = file_size_cache.get(full_path, None)
-            logger.info(f"File: {full_path}: size: {size}, previous size: {previous_size}")
-            file_size_cache[full_path] = size
-            if previous_size is None or size != previous_size:
-                logger.info(f"File: {full_path} will be moved next time")
+            size = os.path.getsize(full_path)
+            if previous_size != size:
+                logger.info(f"File {os.path.basename(full_path)} size is unstable (prev: {previous_size} vs act: {size})")
+                file_size_cache[full_path] = size
                 return False
-            return size == previous_size
+            else:
+                return True
         except FileNotFoundError:
             # Plik nie istnieje
             logger.info(f"File {full_path} doesn't exists")
@@ -227,7 +227,7 @@ def process_rules(rules):
     # Idziemy po plikach w TMP_DIR i przenosimy do katalogów wg reguł
     rule_set = rules.get("move")
     for rule in rule_set:
-        logger.info(f"Rule: {rule}")
+        logger.debug(f"Rule: {rule}")
         files_moved = 0
         from_ = rule["from"]
         from__ = RULE_DIRS[from_]
@@ -243,12 +243,15 @@ def process_rules(rules):
                 moved = move_file_flat(full_path, to__)
                 if moved:
                     files_moved += 1
-        logger.info(f"Przeniesiono {files_moved} plików z {from__} do {to__} wg reguł.")
+        if files_moved > 0:
+            logger.info(f"Przeniesiono {files_moved} plików z {from__} do {to__} wg reguł.")
+        else:
+            logger.debug(f"Przeniesiono {files_moved} plików z {from__} do {to__} wg reguł.")
 
 
 def main():
     logging.basicConfig(filename='app.log', level=logging.INFO)
-    logging.getLogger().addHandler(logging.StreamHandler())
+    # logging.getLogger().addHandler(logging.StreamHandler())
     logger.info('Started')
     poll_interval = int(os.getenv("INPUT_POLL_INTERVAL", "10"))
     logger.info(f"Start procesu z interwałem pollingu: {poll_interval} sekund")
