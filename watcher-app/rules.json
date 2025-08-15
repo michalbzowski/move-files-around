@@ -3,8 +3,39 @@
     {
       "from": "TMP_DIR",
       "to": "WORKING_COPY_DIR",
-      "extensions": ["jpg", "jpeg", "png", "mp4", "pdf", "txt"]
+      "extensions": ["jpg", "jpeg", "png", "mp4", "pdf", "txt", "avi", "bmp", "mov", "wma"]
     },
+    {
+      "from": "TMP_DIR",
+      "to": "ALL_MEDIA_MUSICS_DIR",
+      "extensions": ["mp3", "wav"]
+    },
+    {
+      "from": "TMP_DIR",
+      "to": "ALL_MEDIA_VOICE_RECORDINGS_DIR",
+      "extensions": ["m4a"]
+    },
+    {
+      "from": "TMP_DIR",
+      "to": "ALL_MEDIA_BOOKS_DIR",
+      "extensions": ["azw", "azw3"]
+    },
+    {
+      "from": "TMP_DIR",
+      "to": "ALL_MEDIA_FLAC_FILES_DIR",
+      "extensions": ["flac", "azw3"]
+    },
+    {
+      "from": "TMP_DIR",
+      "to": "ALL_MEDIA_ISO_FILES_DIR",
+      "extensions": ["iso"]
+    },
+    {
+      "from": "TMP_DIR",
+      "to": "ALL_MEDIA_MID_FILES_DIR",
+      "extensions": ["mid", "midi"]
+    },
+
     {
       "from": "ALL_MEDIA_DIR",
       "to": "ALL_MEDIA_PHOTOS_DIR",

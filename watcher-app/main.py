@@ -17,9 +17,10 @@ TMP_DIR = os.getenv("TMP_DIR", "../directories/test_dir/tmp")
 WORKING_COPY_DIR = os.getenv("WORKING_COPY_DIR", "../directories/test_dir/working_copy")
 BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
 ALL_MEDIA_DIR = os.getenv("ALL_MEDIA_DIR", "../directories/test_dir/all_media")
-ADDITIONAL_DIRS = os.getenv("ADDITIONAL_DIRS", "../directories/test_dir/additional_01")
 FILE_SLICE_SIZE = os.getenv("FILE_SLICE_SIZE", 1000)
 CONFIG_FILE = os.getenv("CONFIG_FILE", "rules.json")
+
+ALL_INPUT_DIRS = os.getenv("ADDITIONAL_DIRS", "../directories/test_dir/additional_01") + "," + INPUT_DIR
 
 RULE_DIRS = {
     "INPUT_DIR": INPUT_DIR,
@@ -31,12 +32,19 @@ RULE_DIRS = {
     "BIN_DIR": BIN_DIR,
     "ALL_MEDIA_DIR": ALL_MEDIA_DIR,
     "ALL_MEDIA_PHOTOS_DIR": ALL_MEDIA_DIR + "/photos",
-    "ALL_MEDIA_VIDEOS_DIR": ALL_MEDIA_DIR + "/videos"
+    "ALL_MEDIA_VIDEOS_DIR": ALL_MEDIA_DIR + "/videos",
+    "ALL_MEDIA_MUSICS_DIR": ALL_MEDIA_DIR + "/musics",
+    "ALL_MEDIA_VOICE_RECORDINGS_DIR": ALL_MEDIA_DIR + "/voice_recordings",
+    "ALL_MEDIA_BOOKS_DIR": ALL_MEDIA_DIR + "/books",
+    "ALL_MEDIA_FLAC_FILES_DIR": ALL_MEDIA_DIR + "/flacs",
+    "ALL_MEDIA_ISO_FILES_DIR": ALL_MEDIA_DIR + "/isos",
+    "ALL_MEDIA_MID_FILES_DIR": ALL_MEDIA_DIR + "/midis",
 }
 
-ARCHIVE_EXTENSIONS = ['zip', 'tar', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2', 'tar.xz', 'txz']
+ARCHIVE_EXTENSIONS = ['zip', 'tar', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2', 'tar.xz', 'txz', '7z', "rar"]
 file_size_cache = {}
 logger = logging.getLogger(__name__)
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 
 
 def load_rules():
@@ -90,6 +98,8 @@ def move_file_flat(src_path, dest_dir):
         shutil.move(src_path, dest_path)
         logger.info(f"Przeniesiono {src_path} -> {dest_path}")
         file_size_cache.pop(src_path, None)  # remove from cache.
+        return True
+    return False
 
 
 def extract_archives_from_dir_to_flat_destination(archive_path, dest_dir):
@@ -211,11 +221,10 @@ def process_input_dir(input_dir):
 
 def process_additional_dir(input_dir):
     logger.info(f"Additional dir: {input_dir}")
-    process_input_dir(input_dir)
 
 
-def process_tmp_dir(rules):
-    # Idziemy po plikach w TMP_DIR i przenosimy do WorkingCopy wg reguł (rozszerzenia)
+def process_rules(rules):
+    # Idziemy po plikach w TMP_DIR i przenosimy do katalogów wg reguł
     rule_set = rules.get("move")
     for rule in rule_set:
         logger.info(f"Rule: {rule}")
@@ -231,8 +240,9 @@ def process_tmp_dir(rules):
                 continue
             ext = os.path.splitext(f)[1].lower().lstrip('.')  # usuń kropkę i zmień na małe litery
             if ext in rule["extensions"]:
-                move_file_flat(full_path, to__)
-                files_moved += 1 ##Bug - move file flat nie przenosi za pierwszym razem bo czeka na cache wielkosci pliku
+                moved = move_file_flat(full_path, to__)
+                if moved:
+                    files_moved += 1
         logger.info(f"Przeniesiono {files_moved} plików z {from__} do {to__} wg reguł.")
 
 
@@ -248,14 +258,12 @@ def main():
     while True:
         logger.info(f"Rozpoczynam kolejne sprawdzenie")
         try:
-            for additional_dir in ADDITIONAL_DIRS.split(","):
-                process_additional_dir(additional_dir)
-                remove_empty_dirs(additional_dir)
-            process_input_dir(INPUT_DIR)
-            remove_empty_dirs(INPUT_DIR)
+            for input_dir in ALL_INPUT_DIRS.split(","):
+                process_input_dir(input_dir)
+                remove_empty_dirs(input_dir)
             extract_archives_from_dir_to_flat_destination(PROCESSING_DIR, INPUT_DIR)
 
-            process_tmp_dir(rules)
+            process_rules(rules)
         except Exception as e:
             logger.info(f"Błąd w procesie: {e}")
 

@@ -26,6 +26,8 @@ THUMBNAILS_DIR = os.path.join(os.getcwd(), 'thumbnails')
 CLIP_DOWNLOAD_ROOT = os.getenv("CLIP_DOWNLOAD_ROOT", "../directories/clip_download_root")
 os.makedirs(CLIP_DOWNLOAD_ROOT, exist_ok=True)
 logger = logging.getLogger(__name__)
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+
 # Lokalizacja pliku z zapisanymi tagami (np. w katalogu thumbnails lub innym)
 IMAGE_TAGS_PATH = os.path.join('image_tags', 'image_tags.json')
 
