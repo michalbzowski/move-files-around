@@ -224,24 +224,31 @@ def process_additional_dir(input_dir):
 
 
 def process_rules(rules):
-    # Idziemy po plikach w TMP_DIR i przenosimy do katalogów wg reguł
+    # Idziemy po plikach i przenosimy do katalogów wg reguł
     rule_set = rules.get("move")
     for rule in rule_set:
-        logger.debug(f"Rule: {rule}")
+        logger.info(f"Rule: ")
         files_moved = 0
         from_ = rule["from"]
         from__ = RULE_DIRS[from_]
         to_ = rule["to"]
         to__ = RULE_DIRS[to_]
+        extensions__ = rule["extensions"]
+        logger.info(f"- from: {from__}")
+        logger.info(f"- to:   {to__}")
+        logger.info(f"- ext:  {extensions__}")
         listdir = os.listdir(from__)
+        logger.info(f"- all:  {len(listdir)}")
         for f in listdir[:FILE_SLICE_SIZE]:
             full_path = os.path.join(from__, f)
             if not os.path.isfile(full_path):
                 continue
             ext = os.path.splitext(f)[1].lower().lstrip('.')  # usuń kropkę i zmień na małe litery
-            if ext in rule["extensions"]:
+            logger.info(f"- ext:  {ext}")
+            if ext in extensions__:
                 moved = move_file_flat(full_path, to__)
                 if moved:
+                    logger.info(f"- moved            : {os.path.basename(full_path)}")
                     files_moved += 1
         if files_moved > 0:
             logger.info(f"Przeniesiono {files_moved} plików z {from__} do {to__} wg reguł.")
