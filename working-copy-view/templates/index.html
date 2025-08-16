@@ -66,6 +66,34 @@
                   {% endfor %}
                 </select>
             </div>
+            <div class="control">
+              <label for="sort_by">Sortuj po:</label>
+              <select name="sort_by" id="sort_by">
+                <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Nazwa</option>
+                <option value="size" {% if sort_by == 'size' %}selected{% endif %}>Rozmiar</option>
+                <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Data</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="sort_order">Kolejność:</label>
+              <select name="sort_order" id="sort_order">
+                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Rosnąco</option>
+                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Malejąco</option>
+              </select>
+            </div>
+
+            <div class="control">
+              <label>Rozmiar (B):</label>
+              <input type="number" name="size_min" placeholder="min" value="{{ request.args.get('size_min', '') }}">
+              <input type="number" name="size_max" placeholder="max" value="{{ request.args.get('size_max', '') }}">
+            </div>
+
+            <div class="control">
+              <label>Data wykonania zdjęcia:</label>
+              <input type="date" name="date_min" value="{{ request.args.get('date_min', '') }}">
+              <input type="date" name="date_max" value="{{ request.args.get('date_max', '') }}">
+            </div>
+
         </form>
         <progress id="progressBar" max="100" value="0"></progress>
         <div class="mb-4">
@@ -131,7 +159,13 @@
                 </td>
 
                 <td>{{ (f.size // 1024) }} KB</td>
-                <td>{{ f.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>
+                  {% if f.date_taken %}
+                    {{ f.date_taken.strftime('%Y-%m-%d %H:%M:%S') }}
+                  {% else %}
+                    {{ f.date.strftime('%Y-%m-%d %H:%M:%S') }}
+                  {% endif %}
+                </td>
                 <td>
                     <button class="button is-danger is-small" onclick="moveSelectedSingle('{{ f.name }}', 'bin')">Do
                         bin

@@ -12,11 +12,13 @@ from PIL import Image
 import torch
 import clip  # https://github.com/openai/CLIP
 from flask import send_from_directory
+from PIL.ExifTags import TAGS
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'  # potrzebne do sesji, itp.
 socketio = SocketIO(app, mode="rw",
-                    cors_allowed_origins=["http://localhost:5001", "http://127.0.0.1:5001", "http://192.168.1.68:5001", "*"])
+                    cors_allowed_origins=["http://localhost:5001", "http://127.0.0.1:5001", "http://192.168.1.68:5001",
+                                          "*"])
 
 WORKING_COPY_DIR = os.getenv("WORKING_COPY_DIR", "../directories/test_dir/working_copy")
 BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
@@ -162,14 +164,50 @@ def thumbnail(size, filename):
     return serve_thumbnail(size, filename)
 
 
+def parse_size(size_str):
+    try:
+        return int(size_str)
+    except Exception:
+        return None
+
+
+def parse_date(date_str):
+    try:
+        return datetime.strptime(date_str, '%Y-%m-%d')
+    except Exception:
+        return None
+
+
+def get_image_date_taken(file_path):
+    try:
+        image = Image.open(file_path)
+        exif = image._getexif()
+        if not exif:
+            return None
+        for tag_id, value in exif.items():
+            tag = TAGS.get(tag_id, tag_id)
+            if tag == 'DateTimeOriginal':
+                # Format zwykle: 'YYYY:MM:DD HH:MM:SS'
+                return datetime.strptime(value, '%Y:%m:%d %H:%M:%S')
+    except Exception:
+        return None
+    return None
+
+
 @app.route('/')
 def index():
     name = request.args.get('name', '').lower()
     filter_ext = [e.lower() for e in request.args.getlist('ext') if e]
     image_tags_filter = [p for p in request.args.getlist('image_tags') if p]  # nowy filtr tagów obrazków
-
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 20))
+
+    sort_by = request.args.get('sort_by', 'name')  # domyślnie sortuj po nazwie
+    sort_order = request.args.get('sort_order', 'asc')  # asc / desc
+    size_min = request.args.get('size_min')
+    size_max = request.args.get('size_max')
+    date_min = request.args.get('date_min')
+    date_max = request.args.get('date_max')
 
     all_files = []
     extensions_set = set()
@@ -216,13 +254,57 @@ def index():
 
             stat = os.stat(full)
 
+            date_taken = None
+            if get_file_type(f) == 'image':
+                date_taken = get_image_date_taken(full)
+
             all_files.append({
                 'name': f,
                 'size': stat.st_size,
                 'date': datetime.fromtimestamp(stat.st_mtime),
+                'date_taken': date_taken,
                 'type': get_file_type(f),
                 'image_tags': []
             })
+
+    size_min_val = parse_size(size_min)
+    size_max_val = parse_size(size_max)
+    date_min_val = parse_date(date_min)
+    date_max_val = parse_date(date_max)
+
+    def in_size_range(f):
+        if size_min_val is not None and f['size'] < size_min_val:
+            return False
+        if size_max_val is not None and f['size'] > size_max_val:
+            return False
+        return True
+
+    def in_date_range(f):
+        # dla daty wykonania zdjęcia (punkt 3), wrócimy do tego po uzupełnieniu pola.
+        date_val = get_not_none_file_date(f)
+        if date_min_val and date_val < date_min_val:
+            return False
+        if date_max_val and date_val > date_max_val:
+            return False
+        return True
+
+    def get_not_none_file_date(f):
+        date_val = f.get('date', f['date'])
+        date_taken_val = f.get('date_taken', f['date_taken'])
+        if date_taken_val is not None:
+            date_val = date_taken_val
+        return date_val
+
+    all_files = [f for f in all_files if in_size_range(f) and in_date_range(f)]
+
+    reverse = (sort_order == 'desc')
+    if sort_by == 'name':
+        all_files.sort(key=lambda x: x['name'].lower(), reverse=reverse)
+    elif sort_by == 'size':
+        all_files.sort(key=lambda x: x['size'], reverse=reverse)
+    elif sort_by == 'date':
+        # data wykonania zdjęcia będzie za chwilę dodana (pkt 3)
+        all_files.sort(key=lambda x: get_not_none_file_date(x), reverse=reverse)
 
     total_files = len(all_files)
     total_pages = ceil(total_files / per_page)
@@ -247,7 +329,13 @@ def index():
                            total_pages=total_pages,
                            per_page=per_page,
                            unique_image_tags=unique_image_tags,
-                           filter_image_tags=image_tags_filter)
+                           filter_image_tags=image_tags_filter,
+                           sort_by=sort_by,
+                           sort_order=sort_order,
+                           size_min=size_min,
+                           size_max=size_max,
+                           date_min=date_min,
+                           date_max=date_max)
 
 
 @app.route('/api/files')

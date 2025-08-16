@@ -201,7 +201,7 @@ def process_input_dir(input_dir):
     processed_archives = []  # do przeniesienia do processed (po rozpakowaniu)
 
     listdir = os.listdir(input_dir)
-    for entry in listdir[:FILE_SLICE_SIZE]:
+    for entry in listdir:
         full_path = os.path.join(input_dir, entry)
         if os.path.isdir(full_path):
             logger.info(f"Przetwarzanie katalogu: {full_path}")
@@ -239,7 +239,7 @@ def process_rules(rules):
         logger.info(f"- exts: {extensions__}")
         listdir = os.listdir(from__)
         logger.info(f"- all:  {len(listdir)}")
-        for f in listdir[:FILE_SLICE_SIZE]:
+        for f in listdir:
             full_path = os.path.join(from__, f)
             if not os.path.isfile(full_path):
                 continue
