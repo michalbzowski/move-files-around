@@ -5,6 +5,7 @@ import json
 import zipfile
 import tarfile
 import logging
+from logging.handlers import TimedRotatingFileHandler
 
 # Default values are needed when run locally.
 # Then I do not need define them
@@ -19,6 +20,11 @@ BIN_DIR = os.getenv("BIN_DIR", "../directories/test_dir/bin")
 ALL_MEDIA_DIR = os.getenv("ALL_MEDIA_DIR", "../directories/test_dir/all_media")
 FILE_SLICE_SIZE = os.getenv("FILE_SLICE_SIZE", 1000)
 CONFIG_FILE = os.getenv("CONFIG_FILE", "rules.json")
+# --- Logging (fix: unbounded app.log in container /app → rotated /logs/app.log) ---
+LOG_DIR = os.getenv("LOG_DIR", "./logs")
+LOG_FILE = os.getenv("LOG_FILE", "")  # empty => LOG_DIR/app.log
+LOG_RETENTION_WEEKS = int(os.getenv("LOG_RETENTION_WEEKS", "4"))   # 4 weekly backups ≈ 1 month
+LOG_LEVEL_NAME = os.getenv("LOG_LEVEL", "INFO")
 
 ALL_INPUT_DIRS = os.getenv("ADDITIONAL_DIRS", "../directories/test_dir/additional_01") + "," + INPUT_DIR
 
@@ -43,8 +49,52 @@ RULE_DIRS = {
 
 ARCHIVE_EXTENSIONS = ['zip', 'tar', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2', 'tar.xz', 'txz', '7z', "rar"]
 file_size_cache = {}
+
+
+def _setup_logging():
+    """Configure logging exactly once.
+
+    - File: ${LOG_DIR}/app.log — TimedRotatingFileHandler, weekly (Monday),
+      keep LOG_RETENTION_WEEKS backups (default 4 ≈ 1 month) → hard cap on size.
+    - Stream: stdout, so `docker logs` still works; capped to INFO+ by default
+      so DEBUG-only per-file noise from the file log does NOT flood /var/lib/docker.
+    - Level: LOG_LEVEL env var (default INFO; DEBUG for tracing).
+    """
+    effective_log_file = LOG_FILE or os.path.join(LOG_DIR, "app.log")
+    os.makedirs(os.path.dirname(effective_log_file) or ".", exist_ok=True)
+
+    log_level = getattr(logging, LOG_LEVEL_NAME.upper(), logging.INFO)
+    fmt = "%(asctime)s %(levelname)-8s %(message)s"
+    datefmt = "%Y-%m-%d %H:%M:%S"
+    marker = "_moved_files_around_handler_marker"
+
+    root = logging.getLogger()
+    # Guard: do not stack handlers on repeated calls (e.g. re-import in tests).
+    if any(getattr(h, marker, False) for h in root.handlers):
+        return
+
+    file_handler = TimedRotatingFileHandler(
+        effective_log_file, when="W0", interval=1,
+        backupCount=LOG_RETENTION_WEEKS, encoding="utf-8",
+    )
+    file_handler.suffix = "%Y-W%V"   # e.g. 2026-W34
+    file_handler.setLevel(log_level)
+    file_handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+    setattr(file_handler, marker, True)
+
+    stream_handler = logging.StreamHandler()
+    # Never let DEBUG on the file handler leak DEBUG spam to stdout/container logs.
+    stream_handler.setLevel(min(log_level, logging.INFO))
+    stream_handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+    setattr(stream_handler, marker, True)
+
+    root.setLevel(log_level)
+    root.addHandler(file_handler)
+    root.addHandler(stream_handler)
+
+
+_setup_logging()
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 
 
 def load_rules():
@@ -86,7 +136,7 @@ def copy_file_flat(src_path, dest_dir):
     filename = os.path.basename(src_path)
     dest_path = unique_dest_path(dest_dir, filename)
     shutil.copy2(src_path, dest_path)
-    logger.info(f"Skopiowano {src_path} -> {dest_path}")
+    logger.debug(f"Skopiowano {src_path} -> {dest_path}")
     return dest_path
 
 
@@ -96,7 +146,7 @@ def move_file_flat(src_path, dest_dir):
         filename = os.path.basename(src_path)
         dest_path = unique_dest_path(dest_dir, filename)
         shutil.move(src_path, dest_path)
-        logger.info(f"Przeniesiono {src_path} -> {dest_path}")
+        logger.debug(f"Przeniesiono {src_path} -> {dest_path}")
         file_size_cache.pop(src_path, None)  # remove from cache.
         return True
     return False
@@ -113,7 +163,7 @@ def extract_archives_from_dir_to_flat_destination(archive_path, dest_dir):
             continue
         try:
             if not os.path.isdir(full_path):
-                logger.info(f"Rozpakowywanie archiwum: {archive_path}")
+                logger.debug(f"Rozpakowywanie archiwum: {archive_path}")
                 if full_path.lower().endswith(".zip"):
                     with zipfile.ZipFile(full_path, 'r') as zf:
                         for member in zf.infolist():
@@ -216,7 +266,7 @@ def process_input_dir(input_dir):
                 # zwykły plik - kopiuj do TMP_DIR
                 move_file_flat(full_path, TMP_DIR)
         else:
-            logger.info(f"Pominięto: {full_path} (nie jest plikiem ani katalogiem lub jest w trakcie kopiowania)")
+            logger.debug(f"Pominięto: {full_path} (nie jest plikiem ani katalogiem lub jest w trakcie kopiowania)")
 
 
 def process_additional_dir(input_dir):
@@ -257,8 +307,10 @@ def process_rules(rules):
 
 
 def main():
-    logging.basicConfig(filename='app.log', level=logging.INFO)
-    # logging.getLogger().addHandler(logging.StreamHandler())
+    # Logging already configured at module import time (_setup_logging).
+    # The old `logging.basicConfig(filename='app.log')` here re-pointed the
+    # root logger to an unbounded ./app.log, discarding the rotating handler —
+    # exactly the /var-filling bug. Removed on purpose: do NOT re-add it.
     logger.info('Started')
     poll_interval = int(os.getenv("INPUT_POLL_INTERVAL", "10"))
     logger.info(f"Start procesu z interwałem pollingu: {poll_interval} sekund")
