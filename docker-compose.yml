@@ -2,19 +2,24 @@ version: "3.8"
 
 services:
   file_watcher:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
     build: ./watcher-app
     container_name: file_watcher
     volumes:
-      - ./directories/test_dir/input:/input
-      - ./directories/test_dir/processing:/processing
-      - ./directories/test_dir/processed:/processed
-      - ./directories/test_dir/unprocessable:/unprocessable
-      - ./directories/test_dir/tmp:/tmp
-      - ./directories/test_dir/working_copy:/working_copy
-      - ./directories/test_dir/bin:/bin
-      - ./directories/test_dir/all_media:/all_media
-      #- ./directories/test_dir/additional_01:/additional_01
-      #- ./directories/test_dir/additional_02:/additional_02
+      - /mnt/sda1/my_media/input:/input
+      - /mnt/sda1/my_media/processing:/processing
+      - /mnt/sda1/my_media/processed:/processed
+      - /mnt/sda1/my_media/unprocessable:/unprocessable
+      - /mnt/sda1/my_media/tmp:/tmp
+      - /mnt/sda1/my_media/working_copy:/working_copy
+      - /mnt/sda1/my_media/bin:/bin
+      - /mnt/sda1/my_media/all_media:/all_media
+      - /home/ftpuser/files:/additional_01
+      # app.log (rotating, weekly retention) — see _setup_logging() in watcher-app/main.py
+      - ./logs:/logs
     environment:
       INPUT_DIR: "/input"
       PROCESSING_DIR: "/processing"
@@ -24,22 +29,36 @@ services:
       WORKING_COPY_DIR: "/working_copy"
       BIN_DIR: "/bin"
       ALL_MEDIA_DIR: "/all_media"
-      ADDITIONAL_DIRS: ""#"/additional_01,/additional_02" #example "/additional_01,/additional_02" ## comma separated names must match volumes above. Then all files from those dirs will be moved to input
+      ADDITIONAL_DIRS: "/additional_01" # ,/additional_02" #example "/additional_01,/additional_02" ## comma separated names must match volumes above. Then all files from those dirs will be moved to input
       ## above must be followed by matching volume in volume section eg: - ./directories/test_dir/additional:/additional_01
       CONFIG_FILE: "rules.json"
       INPUT_POLL_INTERVAL: "60"  # w sekundach, zmień wg potrzeby
+      # --- Logging (weekly rotation, hard retention cap) ---
+      LOG_DIR: "/logs"
+      LOG_FILE: "/logs/app.log"
+      LOG_RETENTION_WEEKS: "4"     # 4 weekly backups ≈ 1 month of history
+      LOG_LEVEL: "INFO"            # INFO | DEBUG (DEBUG also writes to file, still capped at INFO on stdout)
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"   # one rotated json log stays ≤ 10 MB
+        max-file: "3"     # docker keeps only the last 3 → ≤ 30 MB per container in /var/lib/docker
   webapp:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
     build: ./working-copy-view
     container_name: webapp
     ports:
       - "5001:5000"        # mapowanie portu na hosta
     volumes:
-      - ./directories/test_dir/working_copy:/working_copy
-      - ./directories/test_dir/bin:/bin
-      - ./directories/test_dir/all_media:/all_media
-      - ./directories/test_dir/unprocessable:/unprocessable
-      - ./directories/clip_download_root:/clip_download_root
+      - /mnt/sda1/my_media/working_copy:/working_copy
+      - /mnt/sda1/my_media/bin:/bin
+      - /mnt/sda1/my_media/all_media:/all_media
+      - /mnt/sda1/my_media/unprocessable:/unprocessable
+      - /mnt/sda1/my_media/clip_download_root:/clip_download_root
     environment:
       WORKING_COPY_DIR: "/working_copy"
       BIN_DIR: "/bin"

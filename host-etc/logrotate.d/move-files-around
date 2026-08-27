@@ -1,0 +1,56 @@
+# Host-side log retention for the move-files-around stack.
+# Place at: /etc/logrotate.d/move-files-around  (on the host machine, NOT in a container)
+# Required permissions: root-owned, mode 0644.
+#
+# After installing, verify with:
+#   sudo logrotate -dv /etc/logrotate.d/move-files-around
+# Force one rotation cycle for testing:
+#   sudo logrotate -f /etc/logrotate.d/move-files-around
+
+# 1) Docker's per-container json logs.
+#    The docker daemon opens these files at container start; the canonical
+#    way to make it pick up a fresh inode after rotation is to reload the
+#    systemd unit. On systems where that is unavailable (e.g. a custom init),
+#    `docker kill` + restart of affected containers will also work but is
+#    more disruptive — keep the unit-reload path as default.
+/var/lib/docker/containers/*/*.log {
+    daily
+    rotate 7                     # ≈ 1 week of history
+    size 50M                     # only rotate when a file exceeds 50 MB
+    missingok
+    notifempty
+    compress
+    delaycompress                # keep the newest rotated copy uncompressed (still writable by the daemon)
+    sharedscripts
+    su root docker               # adjust second user to match your docker group; drop if not present
+    postrotate
+        # Ask the daemon to reopen log files. The `[ -f /var/run/docker.pid ]`
+        # guard makes this a no-op on systems where the pidfile is absent.
+        [ -f /var/run/docker.pid ] && kill -HUP "$(cat /var/run/docker.pid)" 2>/dev/null || true
+        # Alternative on systemd hosts (uncomment if kill -HUP does not work):
+        # systemctl reload docker
+    endscript
+}
+
+# 2) The system journal that absorbed the watcher's stdout in early runs.
+#    This is a host-level safety net; the proper fix is PR #1 (container
+#    log caps). 7-day retention keeps /var/log/messages from becoming the
+#    7.4 GB monolith it was on this machine.
+/var/log/messages {
+    weekly
+    rotate 7                     # ≈ 1 month of history
+    size 50M
+    missingok
+    notifempty
+    compress
+    delaycompress
+    sharedscripts
+    su root root
+    postrotate
+        # Ask rsyslog/journald to reopen. `systemctl reload rsyslog` is the
+        # canonical reload on RHEL/Fedora; the fall-through covers distros
+        # without rsyslog (e.g. Debian with just syslog-ng — harmless if
+        # the unit does not exist).
+        systemctl reload rsyslog 2>/dev/null || true
+    endscript
+}
