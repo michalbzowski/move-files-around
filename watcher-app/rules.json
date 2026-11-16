@@ -3,12 +3,12 @@
     {
       "from": "TMP_DIR",
       "to": "WORKING_COPY_DIR",
-      "extensions": ["jpg", "jpeg", "png", "heic", "mp4", "txt", "avi", "bmp", "mov", "wma"]
+      "extensions": ["jpg", "jpeg", "png", "heic", "nef", "mp4", "txt", "avi", "bmp", "mov", "wma"]
     },
     {
 	"from": "WORKING_COPY_DIR",
 	"to": "ALL_MEDIA_PHOTOS_DIR",
-	"extensions": ["jpg", "jpeg", "heic", "png"]
+	"extensions": ["jpg", "jpeg", "heic", "png", "nef"]
     },
      {
         "from": "WORKING_COPY_DIR",
@@ -158,7 +158,7 @@
     {
       "from": "ALL_MEDIA_DIR",
       "to": "ALL_MEDIA_PHOTOS_DIR",
-      "extensions": ["jpg", "jpeg", "png", "heic"]
+      "extensions": ["jpg", "jpeg", "png", "heic", "nef"]
     },
     {
       "from": "ALL_MEDIA_DIR",
