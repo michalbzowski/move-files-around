@@ -37,6 +37,7 @@ services:
       LOG_DIR: "/logs"
       LOG_FILE: "/logs/app.log"
       LOG_RETENTION_WEEKS: "4"     # 4 weekly backups ≈ 1 month of history
+      LOG_MAX_TOTAL_BYTES: "1073741824"  # twardy budzet katalogu logow app.log* (1 GiB)
       LOG_LEVEL: "INFO"            # INFO | DEBUG (DEBUG also writes to file, still capped at INFO on stdout)
     restart: unless-stopped
     logging:

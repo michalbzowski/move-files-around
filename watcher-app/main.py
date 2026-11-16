@@ -5,6 +5,7 @@ import json
 import zipfile
 import tarfile
 import logging
+import hashlib
 from logging.handlers import TimedRotatingFileHandler
 
 # Default values are needed when run locally.
@@ -25,6 +26,8 @@ LOG_DIR = os.getenv("LOG_DIR", "./logs")
 LOG_FILE = os.getenv("LOG_FILE", "")  # empty => LOG_DIR/app.log
 LOG_RETENTION_WEEKS = int(os.getenv("LOG_RETENTION_WEEKS", "4"))   # 4 weekly backups ≈ 1 month
 LOG_LEVEL_NAME = os.getenv("LOG_LEVEL", "INFO")
+# Twardy budzet calkowitej zajetosci logow app.log* w LOG_DIR (domyślnie 1 GiB).
+LOG_MAX_TOTAL_BYTES = int(os.getenv("LOG_MAX_TOTAL_BYTES", str(1024 ** 3)))
 
 ALL_INPUT_DIRS = os.getenv("ADDITIONAL_DIRS", "../directories/test_dir/additional_01") + "," + INPUT_DIR
 
@@ -131,6 +134,69 @@ def unique_dest_path(dest_dir, filename):
     return os.path.join(dest_dir, candidate)
 
 
+def _sha256_of(path, chunk_size=1024 * 1024):
+    """Hash sha256 pliku w strumieniu (duze pliki wideo nie zjeda RAM-u)."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def same_content_in(dest_dir, src_path):
+    """Czy dest_dir juz zawiera plik o tym samym rozmiarze i sha256 co src_path?
+
+    Najpierw tani filtr po rozmiarze (stat), hash tylko kandydatow.
+    Skanuje caly katalog - chwytaja tez duplikaty po zmianie nazwy.
+    """
+    try:
+        size = os.path.getsize(src_path)
+    except OSError as e:
+        logger.warning(f"Nie da sie odczytac rozmiaru {src_path}: {e}")
+        return False
+    for name in os.listdir(dest_dir):
+        candidate = os.path.join(dest_dir, name)
+        try:
+            if not os.path.isfile(candidate) or os.path.getsize(candidate) != size:
+                continue
+            if _sha256_of(candidate) == _sha256_of(src_path):
+                return True
+        except OSError as e:
+            logger.warning(f"Ignoruje {candidate}: {e}")
+    return False
+
+
+def enforce_log_budget():
+    """Twardy limit zajetosci katalogu LOG_DIR (pliki app.log*).
+
+    TimedRotatingFileHandler gwarantuje rotacje czasowa, ale bez limitu
+    rozmiaru jeden bardzo aktywny tydzien urośnie ponad budzet. Tu:
+    gdy suma przekracza LOG_MAX_TOTAL_BYTES (domyślnie 1 GiB), usuwamy
+    najstarsze zapasy - zawsze zostaje aktualny app.log.
+    """
+    log_file = os.path.abspath(LOG_FILE or os.path.join(LOG_DIR, "app.log"))
+    try:
+        files = [os.path.join(LOG_DIR, n) for n in os.listdir(LOG_DIR)]
+    except OSError as e:
+        logger.warning(f"Ograniczenie logow: brak dostepu do {LOG_DIR}: {e}")
+        return
+    files = [f for f in files if os.path.isfile(f) and os.path.basename(f).startswith("app.log")]
+    rotated = sorted(f for f in files if os.path.abspath(f) != log_file)
+    total = sum(os.path.getsize(f) for f in files)
+    guard = 0
+    while total > LOG_MAX_TOTAL_BYTES and rotated and guard < 100:
+        oldest = rotated.pop(0)  # suffix %Y-W%V: porzadek alfabetyczny == chronologiczny
+        try:
+            freed = os.path.getsize(oldest)
+            os.remove(oldest)
+        except OSError as e:
+            logger.error(f"Ograniczenie logow: nie usunieto {oldest}: {e}")
+            break
+        total -= freed
+        guard += 1
+        logger.info(f"Ograniczenie logow: usunieto najstarszy odcinek {os.path.basename(oldest)} (budzet: {LOG_MAX_TOTAL_BYTES} B)")
+
+
 def copy_file_flat(src_path, dest_dir):
     """Kopiuje plik do dest_dir zachowując płaską strukturę, unikając nadpisania."""
     filename = os.path.basename(src_path)
@@ -142,14 +208,22 @@ def copy_file_flat(src_path, dest_dir):
 
 def move_file_flat(src_path, dest_dir):
     """Przenosi plik do dest_dir zachowując płaską strukturę, unikając nadpisania."""
-    if is_stable(src_path):
-        filename = os.path.basename(src_path)
-        dest_path = unique_dest_path(dest_dir, filename)
-        shutil.move(src_path, dest_path)
-        logger.debug(f"Przeniesiono {src_path} -> {dest_path}")
-        file_size_cache.pop(src_path, None)  # remove from cache.
-        return True
-    return False
+    if not is_stable(src_path):
+        return False
+    filename = os.path.basename(src_path)
+    if same_content_in(dest_dir, src_path):
+        # Nie tworz kopii (1)/(2), gdy w dest juz jest ten sam plik:
+        # nadmiarowa kopia trafia do BIN_DIR, oryginał w dest zostaje.
+        bin_path = unique_dest_path(BIN_DIR, filename)
+        shutil.move(src_path, bin_path)
+        file_size_cache.pop(src_path, None)
+        logger.info(f"Zduplikowany plik (ten sam sha256): '{filename}' juz jest w {dest_dir} -> nadmiarowa kopia trafia do BIN ({os.path.basename(bin_path)})")
+        return False
+    dest_path = unique_dest_path(dest_dir, filename)
+    shutil.move(src_path, dest_path)
+    logger.debug(f"Przeniesiono {src_path} -> {dest_path}")
+    file_size_cache.pop(src_path, None)  # remove from cache.
+    return True
 
 
 def extract_archives_from_dir_to_flat_destination(archive_path, dest_dir):
@@ -326,6 +400,7 @@ def main():
             extract_archives_from_dir_to_flat_destination(PROCESSING_DIR, INPUT_DIR)
 
             process_rules(rules)
+            enforce_log_budget()
         except Exception as e:
             logger.info(f"Błąd w procesie: {e}")
 
