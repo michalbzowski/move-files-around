@@ -415,7 +415,7 @@ def process_rules(rules):
             if not os.path.isfile(full_path):
                 continue
             ext = os.path.splitext(f)[1].lower().lstrip('.')  # usuń kropkę i zmień na małe litery
-            logger.info(f"- ext:  {ext}")
+            logger.debug(f"- ext: {ext}")  # INFO = 62 mln linii dziennie przy backlogu tmp; debug w razie potrzeby
             if ext in extensions__:
                 moved = move_file_flat(full_path, to__)
                 if moved:
