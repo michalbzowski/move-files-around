@@ -16,3 +16,8 @@ working-copy-view/package-lock.json
 .venv
 .venv/**
 app.log
+# sekrety + artefakty (2026-11-17)
+.env
+__pycache__/
+*.pyc
+photorec.se2
