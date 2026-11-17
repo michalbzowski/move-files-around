@@ -39,6 +39,11 @@ services:
       LOG_RETENTION_WEEKS: "4"     # 4 weekly backups ≈ 1 month of history
       LOG_MAX_TOTAL_BYTES: "1073741824"  # twardy budzet katalogu logow app.log* (1 GiB)
       LOG_LEVEL: "INFO"            # INFO | DEBUG (DEBUG also writes to file, still capped at INFO on stdout)
+      # --- PhotoPrism: auto-trigger indeksu po przeniesieniu foto (sesja + POST /api/v1/index) ---
+      PP_BASE_URL: "http://192.168.1.69:2342"
+      PP_ADMIN_USER: "${PP_ADMIN_USER:-admin}"  # sekrety w .env — nigdy w pliku pod git!
+      PP_ADMIN_PASS: "${PP_ADMIN_PASS}"  # hasło admina PP; wartość w .env (chmod 600)
+      PP_INDEX_MIN_INTERVAL: "1800"   # min. sekund między wywołaniami indeksu (throttle)
     restart: unless-stopped
     logging:
       driver: "json-file"

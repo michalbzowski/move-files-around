@@ -6,6 +6,7 @@ import zipfile
 import tarfile
 import logging
 import hashlib
+import urllib.request
 from logging.handlers import TimedRotatingFileHandler
 
 # Default values are needed when run locally.
@@ -41,6 +42,7 @@ RULE_DIRS = {
     "BIN_DIR": BIN_DIR,
     "ALL_MEDIA_DIR": ALL_MEDIA_DIR,
     "ALL_MEDIA_PHOTOS_DIR": ALL_MEDIA_DIR + "/photos",
+    "PP_IMPORT_DIR": ALL_MEDIA_DIR + "/incoming",
     "ALL_MEDIA_VIDEOS_DIR": ALL_MEDIA_DIR + "/videos",
     "ALL_MEDIA_MUSICS_DIR": ALL_MEDIA_DIR + "/musics",
     "ALL_MEDIA_VOICE_RECORDINGS_DIR": ALL_MEDIA_DIR + "/voice_recordings",
@@ -347,8 +349,53 @@ def process_additional_dir(input_dir):
     logger.info(f"Additional dir: {input_dir}")
 
 
+def trigger_pp_index(photo_count):
+    """Zapoczątkowuje indeks PhotoPrism (zweryfikowany 2026-11-16:
+    POST /api/v1/session → access_token, następnie POST /api/v1/index z Bearer).
+    Throttle przez plik stanowy; awaria PP nigdy nie psuje watchera."""
+    base = os.getenv("PP_BASE_URL", "").rstrip("/")
+    user = os.getenv("PP_ADMIN_USER", "")
+    password = os.getenv("PP_ADMIN_PASS", "")
+    if not base or not user:
+        logger.debug(f"Trigger PP pominięty ({photo_count} foto, brak konfigu).")
+        return
+    state_file = "/tmp/last_pp_index"
+    min_interval = int(os.getenv("PP_INDEX_MIN_INTERVAL", "1800"))
+    try:
+        with open(state_file) as fh:
+            if time.time() - float(fh.read().strip() or 0) < min_interval:
+                logger.info(f"Trigger PP pominięty ({photo_count} foto, za wcześnie).")
+                return
+    except Exception:
+        pass
+    try:
+        req = urllib.request.Request(
+            base + "/api/v1/session",
+            data=json.dumps({"username": user, "password": password}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            token = json.load(resp).get("access_token")
+        if not token:
+            raise RuntimeError("brak access_token w odpowiedzi sesji")
+        req2 = urllib.request.Request(
+            base + "/api/v1/index",
+            headers={"Authorization": "Bearer " + token},
+            method="POST",
+        )
+        with urllib.request.urlopen(req2, timeout=30) as resp2:
+            resp2.read()
+        with open(state_file, "w") as fh:
+            fh.write(str(time.time()))
+        logger.info(f"PhotoPrism: indeks zapoczątkowany ({photo_count} nowych foto).")
+    except Exception as e:
+        logger.warning(f"Trigger PP nie działa (watcher trwa dalej): {e}")
+
+
 def process_rules(rules):
     # Idziemy po plikach i przenosimy do katalogów wg reguł
+    photo_moves = 0
     rule_set = rules.get("move")
     for rule in rule_set:
         logger.info(f"Rule: ")
@@ -374,10 +421,16 @@ def process_rules(rules):
                 if moved:
                     logger.info(f"- moved            : {os.path.basename(full_path)}")
                     files_moved += 1
+                    if to_ == "ALL_MEDIA_PHOTOS_DIR":
+                        photo_moves += 1
         if files_moved > 0:
             logger.info(f"Przeniesiono {files_moved} plików z {from__} do {to__} wg reguł.")
         else:
             logger.debug(f"Przeniesiono {files_moved} plików z {from__} do {to__} wg reguł.")
+
+    if photo_moves > 0:
+        # Foto ląduje w originals PhotoPrism — niech się samo zaindeksuje.
+        trigger_pp_index(photo_moves)
 
 
 def main():
